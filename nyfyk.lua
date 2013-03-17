@@ -37,6 +37,10 @@ local function items(idx)
         end
     end
 end
+local function allitems()
+    local feeds = dbget('SELECT guid,title,author,url,pubDate,content,unread,feedurl,enclosure_url,enclosure_type,enqueued,flags,base FROM rss_item WHERE deleted = 0 ORDER BY pubDate DESC, id DESC limit 10;"')
+    ngx.print(cjson.encode(feeds))
+end
 
 local function feeds()
     local sql = dbget('SELECT * FROM rss_feed')
@@ -48,6 +52,7 @@ end
 local routes = {
     ['feeds/$']     = feeds,
     ['items/(\\d+)/?$']     = items,
+    ['items/?$'] = allitems,
 }
 -- Set the content type
 ngx.header.content_type = 'application/json';

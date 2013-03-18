@@ -38,12 +38,19 @@ local function items(idx)
     end
 end
 local function allitems()
-    local feeds = dbget('SELECT guid,title,author,url,pubDate,content,unread,feedurl,enclosure_url,enclosure_type,enqueued,flags,base FROM rss_item WHERE deleted = 0 ORDER BY pubDate DESC, id DESC limit 10;"')
+    local feeds = dbget('SELECT guid,title,author,url,pubDate,content,unread,feedurl,enclosure_url,enclosure_type,enqueued,flags,base FROM rss_item WHERE deleted = 0 ORDER BY pubDate DESC, id DESC limit 1, 1;"')
     ngx.print(cjson.encode(feeds))
 end
 
 local function feeds()
-    local sql = dbget('SELECT * FROM rss_feed')
+    --local sql = dbget('SELECT * FROM rss_feed')
+    --local sql = dbget([[
+    --    select rss_feed.title,rssurl, count(unread) as unread from rss_feed inner join rss_item where rss_item.feedurl = rss_feed.rssurl and unread = 1 group by rssurl order by rss_feed.title;
+    --]])
+    local sql = dbget([[
+    select *, (select count(unread) from rss_item where rss_item.feedurl = rssurl and unread = 1) as unread  from rss_feed;
+    ]])
+
     ngx.print(cjson.encode(sql))
 end
 

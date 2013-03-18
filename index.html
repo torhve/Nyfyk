@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" ng-app>
+<html lang="en" ng-app="nyfyk">
   <head>
     <meta charset="utf-8">
     <title>Nyfyk RSS Reader</title>
@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="/static/screen.css">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.5/angular.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.5/angular-resource.min.js"></script>
+    <script src="static/js/app.js"></script>
     <script src="static/js/controllers.js"></script>
     <link rel="shortcut icon" href="/static/favicon.png">
 
@@ -32,12 +33,25 @@
         </a>
       </aside>
       <aside class="feeds" ng-controller="FeedListCtrl">
-          <p class="muted">RSS Reader</p>
+          <div class="btn-group">
+              <a href=# class="btn">
+                  <i class="icon-plus">
+                  </i>
+              </a>
+              <a href=# class="btn">
+                  <i class="icon-refresh">
+                  </i>
+              </a>
+              <a href=# class="btn">
+                  <i class="icon-cog">
+                  </i>
+              </a>
+          </div>
           <ul class="feeds unstyled">
-              <li ng-repeat="feed in feeds">
-            <a href="#/feeds/{{feed.rssurl}}">
-        
+              <li ng-repeat="feed in feeds"  ng-click="select(item)" ng-class="itemClass(item)">
+              <a href="#/feeds/{{feed.rssurl}}" ng-click="setActive(feed)">
                 {{ feed.title }}
+                <span class="pull-right badge">{{ feed.unread }}</span>
             </a>
               </li>
           </ul>
@@ -47,16 +61,7 @@
       </aside>
     </header>
     <article class="content" ng-controller="FeedCtrl">
-    <div class="hero-unit "><h3>Welcome to Nyfyk RSS reader </h3>
-        Nyfyk is a nginx+lua+angular frontend for the <a href="http://newsbeuter.org">Newsbeuter CLI RSS Reader.</a><br>
-    This is a proof of concept which does not work yet.</div>
-    <ul class="unstyled items">
-              <li ng-repeat="item in feed">
-              <h2>{{ item.title }}</h2>
-              <p class="muted">{{ item.pubDate }}</p>
-              <div ng-bind-html-unsafe="item.content"></div>
-              </li>
-      </ul>
+        <div ng-view></div>
     </article>
     <footer>
     </footer>

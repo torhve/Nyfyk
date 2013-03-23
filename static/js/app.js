@@ -1,8 +1,52 @@
-angular.module('nyfyk', []).
-  config(['$routeProvider', function($routeProvider) {
-  $routeProvider.
-      when('/feeds', {templateUrl: 'feed-list.html',   controller: FeedListCtrl}).
-      when('/feeds/:feedId', {templateUrl: 'feed.html', controller: FeedCtrl}).
-      otherwise({redirectTo: '/feeds'});
-}]);
+var Nyfyk = angular.module('Nyfyk', ['Nyfyk.filters', 'Nyfyk.services', 'Nyfyk.directives' ]);
 
+Nyfyk.run(function(items) {
+    /*
+  chrome.extension.onMessage.addListener(function(request) {
+    if (request != 'feedsUpdated') return;
+    items.getItemsFromDataStore();
+  });
+  */
+});
+
+
+// Main app controller
+function AppController($scope, items, scroll, bgPage) {
+
+  $scope.items = items;
+
+  $scope.refresh = function() {
+    bgPage.refreshFeeds();
+  };
+
+  $scope.handleSpace = function() {
+    if (!scroll.pageDown()) {
+      items.next();
+    }
+  };
+
+  $scope.$watch('items.selectedIdx', function(newVal) {
+    if (newVal !== null) scroll.toCurrent();
+  });
+}
+
+
+// Top Menu/Nav Bar
+function NavBarController($scope, items) {
+
+  $scope.showAll = function() {
+    items.clearFilter();
+  };
+
+  $scope.showUnread = function() {
+    items.filterBy('read', false);
+  };
+
+  $scope.showStarred = function() {
+    items.filterBy('starred', true);
+  };
+
+  $scope.showRead = function() {
+    items.filterBy('read', true);
+  };
+}

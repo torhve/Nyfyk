@@ -1,81 +1,160 @@
-<!DOCTYPE html>
-<html lang="en" ng-app="nyfyk">
-  <head>
-    <meta charset="utf-8">
-    <title>Nyfyk RSS Reader</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Nyfyk RSS reader ">
-    <meta name="author" content="Tor Hveem">
+<!doctype html>
+<html lang="en" ng-app="Nyfyk" ng-csp>
+<head>
+  <meta charset="utf-8">
 
-    <link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="/static/fa/css/font-awesome.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/screen.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.5/angular.min.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.5/angular-resource.min.js"></script>
-    <script src="static/js/app.js"></script>
-    <script src="static/js/controllers.js"></script>
-    <link rel="shortcut icon" href="/static/favicon.png">
+  <title>Nyfyk</title>
+  <link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
+  <link href="/static/fa/css/font-awesome.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="shortcut icon" href="/static/favicon.png">
 
-    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
-    <!--[if lt IE 9]>
-      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+  <script src="/static/bootstrap/js/bootstrap.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.0.5/angular.min.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.0.5/angular-resource.min.js"></script>
+  <script src="static/js/libs/moment-1.4.0.min.js"></script>
+  <script src="static/js/app.js"></script>
+  <script src="static/js/filters.js"></script>
+  <script src="static/js/services.js"></script>
+  <script src="static/js/directives.js"></script>
+</head>
+<body ng-controller="AppController" ng-cloak w-keydown w-space="handleSpace()"
+      w-down="items.next()" w-up="items.prev()" w-read="items.toggleRead()" w-star="items.toggleStarred()" >
+  <header>
 
-    </head>
-
-    <body class="">
-    <header id="sidebar">
-
-      <aside class="logo">
-        <a href="#" title="Home">
-            <h1><i class="icon-rss"></i>
-          <a class="brand" title="That's me" href="#">Nyfyk</a></h1>
-        </a>
-      </aside>
-      <aside class="feeds" ng-controller="FeedListCtrl">
-          <div class="btn-group">
-              <a href=# class="btn">
-                  <i class="icon-plus">
-                  </i>
-              </a>
-              <a href=# class="btn">
-                  <i class="icon-refresh">
-                  </i>
-              </a>
-              <a href=# class="btn">
-                  <i class="icon-cog">
-                  </i>
-              </a>
-          </div>
-          <ul class="feeds unstyled">
-              <li ng-repeat="feed in feeds"  ng-click="select(item)" ng-class="itemClass(item)">
-              <a href="#/feeds/{{feed.rssurl}}" ng-click="setActive(feed)">
-                {{ feed.title }}
-                <span class="pull-right badge">{{ feed.unread }}</span>
-            </a>
-              </li>
+    <div class="navbar navbar-fixed-top no-select" ng-controller="NavBarController">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" data-toggle="modal" href="#modalAbout">
+              <i class="icon-rss"></i>
+            Nyfyk
+          </a>
+          <ul class="nav">
+            <li class="divider-vertical"></li>
+            <li class="itemCount"><a ng-click="showAll()">{{items.all.length}} Items</a></li>
+            <li class="divider-vertical"></li>
+            <li class="itemCount"><a ng-click="showUnread()">{{items.all.length - items.readCount}} Unread</a></li>
+            <li class="divider-vertical"></li>
+            <li class="itemCount"><a ng-click="showStarred()">{{items.starredCount}} Starred</a></li>
+            <li class="divider-vertical"></li>
+            <li class="itemCount"><a ng-click="showRead()">{{items.readCount}} Read</a></li>
+            <li class="divider-vertical"></li>
           </ul>
-      </aside>
-      <aside class="about">
-          <p>Lua&amp;Nginx <a href="#">powered</a></p>
-      </aside>
-    </header>
-    <article class="content" ng-controller="FeedCtrl">
-        <div ng-view></div>
-    </article>
-    <footer>
-    </footer>
+          <form class="navbar-search pull-left" id="navSearch">
+            <input type="search" ng-model="$parent.search" class="search-query" placeholder="Search">
+          </form>
+          <ul class="nav pull-right">
+            <!--<li><a ng-click="showSettings()"><i class="icon-cog icon-white"></i></a></li>-->
+            <!--
+            <li><a {{action "showUserConfig" on="click"}}><i class="icon-user icon-white"></i></a></li>
+            -->
+            <li><a ng-click="refresh()" title="Refresh all feeds" alt="Refresh all feeds"><i class="icon-refresh icon-white"></i></a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
 
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
-    <script src="/static/bootstrap/js/bootstrap.js"></script>
-    <script>
-$(document).ready(function() {
-//    document.querySelector('.content').clientHeight = window.innerHeight;
-    var cheight = $(document).height();
-    $(".content").height(cheight);
+  </header>
+  <section class="mainContent">
 
-});
-</script>
+    <section class="controls no-select">
+      <div class="tControls">
+        <div class="top">
+          <button ng-click="items.markAllRead()" class="btn" title="Mark all as read" alt="Mark all as read"><i class="icon-ok"></i></button>
+        </div>
+        <br>
+        <div class="middle">
+          <button ng-click="items.prev()" class="btn" ng-disabled="!items.hasPrev()"><i class="icon-arrow-up"></i></button>
+          <button ng-click="items.toggleStarred()" ng-disabled="!items.selected" class="btn">
+            <i ng-class="{'icon-star': items.selected.starred, 'icon-star-empty': !items.selected.starred}"></i>
+          </button>
+          <button ng-click="items.toggleRead()" ng-disabled="!items.selected" class="btn">
+            <i ng-class="{'icon-ok-sign': items.selected.read, 'icon-ok-circle': !items.selected.read}"></i>
+          </button>
+          <button ng-click="items.next()" class="btn" ng-disabled="!items.hasNext()"><i class="icon-arrow-down"></i></button>
+        </div>
+        <div class="bottom">
+          <button ng-click="refresh()" class="btn" title="Refresh feeds" alt="Refresh feeds">
+            <i class="icon-refresh"></i>
+          </button>
+        </div>
+      </div>
+    </section>
 
-  </body>
+    <section class="summaries">
+      <article ng-repeat="item in items.filtered | filter: search"
+               id="{{item.id}}"
+               ng-class="{read: item.read, active: item.selected}" class="well summary"
+               ng-click="items.selectItem($index)">
+        <div class="row-fluid" >
+          <div class="span6 pub-name">
+            {{item.feedTitle}}
+          </div>
+          <div class="span6 pub-date">
+            {{item.date | formattedDate}}
+          </div>
+        </div>
+        <h3 class="pub-title">{{item.title}}</h3>
+      </article>
+    </section>
+
+    <section class="entries">
+
+      <article class="well entry active" ng-class="{read: items.selected.read}" ng-show="items.selected">
+        <div class="row-fluid">
+          <div class="span8">{{items.selected.date | formattedDate}}</div>
+            <div class="span4 actions">
+              <a ng-click="items.toggleStarred()">
+                <i ng-class="{'icon-star': items.selected.starred, 'icon-star-empty': !items.selected.starred}"></i>
+              </a>
+              <a ng-click="items.toggleRead()">
+                <i ng-class="{'icon-ok-sign': items.selected.read, 'icon-ok-circle': !items.selected.read}"></i>
+              </a>
+              <a href="{{items.selected.url}}" target="_blank"><i class="icon-share"></i></a>
+            </div>
+          </div>
+          <p class="muted pub-name">{{items.selected.feedTitle}}</p>
+          <h2>{{items.selected.title}}</h2>
+          <hr>
+          <!-- 
+          <w-content src="items.selected.content"></w-content>
+          -->
+          <p class="post-content" ng-bind-html-unsafe="items.selected.content"></p>
+          <hr>
+          <p class="muted author">{{items.selected.author}}</p> 
+
+        </div>
+      </article>
+      <div class="nothingSelected" ng-show="!items.filtered.length || !items.selected">
+        <h1><i class="icon-rss"></i></h1>
+        <p>Nothing selected.</p>
+      </div>
+
+    </section>
+  </section>
+
+  <div class="modal fade" id="modalAbout">
+    <div class="modal-header">
+      <a class="close" data-dismiss="modal">×</a>
+      <h3>About Nyfyk</h3>
+    </div>
+    <div class="modal-body">
+      <h3>Why Nyfyk?</h3>
+      <p>Why not?</p>
+      <h3>What's with the name?</h3>
+      <p>Nyfyk is a play on words in Norwegian where Ny means New and just like in english the start of the word for News. Fyk's literal meaning is "fly", also used about journalist slang "Bladfyk". This makes Nyfyk's meaning "Running after News", or "Running after New stuff", sort of.</p>
+      <h3>Attribution</h3>
+      <p>This code is a fork off WReader by <a href="http://petelepage.com">Pete LePage</a>.
+         AngularJS port by <a href="http://ericbidelman.com">Eric Bidelman</a>, Vojta Jina.
+         Chrome Platform port by <a href="http://igorminar.com">Igor Minar</a>.
+         Newsbeuter backend switch by <a href="http://hveem.no/">Tor Hveem</a>
+      <p/>
+    </div>
+    <div class="modal-footer">
+      <a data-dismiss="modal" class="btn btn-primary">Close</a>
+    </div>
+  </div>
+
+</body>
 </html>

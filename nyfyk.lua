@@ -3,14 +3,29 @@ local cjson = require "cjson"
 
 local dbh  = nil
 
-local function dbget(sql) 
+--
+-- Helper function to execute statements
+--
+local function dbexec(sql)
     local sth, err = dbh:prepare(sql)
     if err then 
         ngx.print(err)
-        return
+        return false
     end
     local ok, err = sth:execute()
+    if err then 
+        ngx.print(err)
+        return false
+    end
+    return sth, ok, err
+end
+
+--
+-- Convenience SQL getter function that puts columns into each row, for easy JSON
+--
+local function dbget(sql) 
     local ret = {}
+    local sth, ok, err = dbexec(sql)
     if ok then 
         local columns = sth:columns()
         for r in sth:rows() do
@@ -25,7 +40,6 @@ local function dbget(sql)
 end
 
 local function items(idx)
-    local idx = tonumber(idx[1])
     local sql = dbget('SELECT rssurl FROM rss_feed')
     for i, k in ipairs(sql) do
         if idx == i then
@@ -38,7 +52,7 @@ local function items(idx)
     end
 end
 local function allitems()
-    local feeds = dbget('SELECT guid,title,author,url,pubDate,content,unread,feedurl,enclosure_url,enclosure_type,enqueued,flags,base FROM rss_item WHERE deleted = 0 ORDER BY pubDate DESC, id DESC limit 1, 1;"')
+    local feeds = dbget('SELECT id,guid,title,author,url,pubDate,content,unread,feedurl,enclosure_url,enclosure_type,enqueued,flags,base,(select title from rss_feed where rss_feed.rssurl = feedurl) as feedTitle FROM rss_item WHERE deleted = 0 ORDER BY pubDate DESC, id DESC ;"')
     ngx.print(cjson.encode(feeds))
 end
 
@@ -54,12 +68,39 @@ local function feeds()
     ngx.print(cjson.encode(sql))
 end
 
+--
+-- Take parameters from a PUT request and overwrite the record with new values
+--
+local function item(match)
+    local id = assert(tonumber(match[1]))
+    local method = ngx.req.get_method()
+    if method == 'PUT' then
+        local sth, ok, err = dbexec([[
+            UPDATE rss_item SET unread = 0 WHERE id = ]]..id ..[[ LIMIT 1 ]]
+        )
+        if not ok then
+            ngx.print(ok)
+        else
+            ngx.print('{"success": true}')
+        end
+    elseif method == 'GET' then
+        items(id)
+    end
+end
+
+--
+-- Spawn the newsbeuter refresh
+--
+local function refresh()
+    -- for the demo copy a sample db back to newsbeuter.db
+end
+
 
 -- mapping patterns to views
 local routes = {
     ['feeds/$']     = feeds,
-    ['items/(\\d+)/?$']     = items,
     ['items/?$'] = allitems,
+    ['items/(\\d+)/?$'] = item,
 }
 -- Set the content type
 ngx.header.content_type = 'application/json';
@@ -70,9 +111,11 @@ for pattern, view in pairs(routes) do
     local uri = '^' .. BASE .. pattern
     local match = ngx.re.match(ngx.var.uri, uri, "") -- regex mather in compile mode
     if match then
-        dbh = assert(DBI.Connect('SQLite3', '/home/xt/src/nyfyk/newsbeuter.db', nil, nil, nil, nil))
+        dbh = assert(DBI.Connect('SQLite3', '/home/xt/src/nyfyk/db/newsbeuter.db', nil, nil, nil, nil))
+        dbh:autocommit(true)
         exit = view(match) or ngx.HTTP_OK
         -- finish up
+        --local ok = dbh:commit()
         local ok = dbh:close()
         ngx.exit( exit )
     end

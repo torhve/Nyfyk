@@ -182,6 +182,12 @@ services.factory('items', ['$http', function($http) {
           items.selected.selected = true;
         }
       }
+    },
+
+    refreshFeeds: function() {
+        $http.get('/nyfyk/api/refresh/').then(function(data) {
+            console.log(data);
+        });
     }
   };
 
@@ -233,7 +239,9 @@ services.factory('bgPage', function() {
      * Initiates feed refresh.
      */
     refreshFeeds: function() {
-      chrome.extension.sendMessage('refreshFeeds');
+      $http.get('/nyfyk/api/refresh/').then(function(data) {
+          console.log(data);
+      });
     }
   };
 });

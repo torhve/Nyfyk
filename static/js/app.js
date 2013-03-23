@@ -16,7 +16,8 @@ function AppController($scope, items, scroll, bgPage) {
   $scope.items = items;
 
   $scope.refresh = function() {
-    bgPage.refreshFeeds();
+    //bgPage.refreshFeeds();
+    items.refreshFeeds();
   };
 
   $scope.handleSpace = function() {

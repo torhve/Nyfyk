@@ -1,6 +1,8 @@
 local dbi = require 'DBI'
 local cjson = require "cjson"
+local os = require 'os'
 
+local DBPATH = '/home/xt/src/nyfyk/db/newsbeuter.db'
 local dbh  = nil
 
 --
@@ -93,6 +95,10 @@ end
 --
 local function refresh()
     -- for the demo copy a sample db back to newsbeuter.db
+    local cmd = 'cp '..DBPATH..'.demo '..DBPATH
+    ngx.print(cmd)
+    local exec = os.execute(cmd)
+    ngx.print(exec)
 end
 
 
@@ -101,6 +107,7 @@ local routes = {
     ['feeds/$']     = feeds,
     ['items/?$'] = allitems,
     ['items/(\\d+)/?$'] = item,
+    ['refresh/$']     = refresh,
 }
 -- Set the content type
 ngx.header.content_type = 'application/json';
@@ -111,7 +118,7 @@ for pattern, view in pairs(routes) do
     local uri = '^' .. BASE .. pattern
     local match = ngx.re.match(ngx.var.uri, uri, "") -- regex mather in compile mode
     if match then
-        dbh = assert(DBI.Connect('SQLite3', '/home/xt/src/nyfyk/db/newsbeuter.db', nil, nil, nil, nil))
+        dbh = assert(DBI.Connect('SQLite3', DBPATH, nil, nil, nil, nil))
         dbh:autocommit(true)
         exit = view(match) or ngx.HTTP_OK
         -- finish up

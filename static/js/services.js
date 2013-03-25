@@ -23,10 +23,12 @@ Item.prototype.$$hashKey = function() {
 services.factory('items', ['$http', function($http) {
   var items = {
     all: [],
+    feeds: [],
     filtered: [],
     selected: null,
     selectedIdx: null,
     readCount: 0,
+    feedCount: 0,
     starredCount: 0,
 
 
@@ -43,22 +45,27 @@ services.factory('items', ['$http', function($http) {
         var i = 0;
 
         items.all = [];
+        items.feeds = [];
         console.log('data', data);
-
         feed = data.data;
-        console.log(feed);
 
         angular.forEach(feed, function(entry) {
             var item = new Item(entry, feed.title, feed.url);
             items.all.push(item);
             i++;
+            // maintain unique list of feed titles
+            if(items.feeds.indexOf(entry.feedTitle) == -1) {
+                items.feeds.push(entry.feedTitle);
+            }
         });
         console.log("Entries loaded from backend:", i);
 
         items.all.sort(function(entryA, entryB) {
             return entryB.pubDate - entryA.pubDate;
         });
-
+        items.feeds.sort(function(entryA, entryB) {
+            return entryB - entryA;
+        });
 
         // Default show unread
         items.filtered = items.all.filter(function(item) {
@@ -147,10 +154,12 @@ services.factory('items', ['$http', function($http) {
     markAllRead: function() {
       items.filtered.forEach(function(item) {
         item.read = true;
-        console.log('Fixme', 'markallread');
         //feedStore.updateEntryProp(item.feedUrl, item.id, 'read', true);
       });
       items.readCount = items.filtered.length;
+      $http.put('/nyfyk/api/items/', {'unread': 0}).success(function(data) {
+          console.log('MarkAllRead backend said', data);
+      });
     },
 
 

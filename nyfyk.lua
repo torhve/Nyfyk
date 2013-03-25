@@ -3,6 +3,9 @@ local cjson = require "cjson"
 local os = require 'os'
 
 local DBPATH = '/home/xt/src/nyfyk/db/newsbeuter.db'
+if ngx.var.remote_addr == "172.16.36.100" then
+    DBPATH = '/home/xt/.newsbeuter/cache.db'
+end
 local dbh  = nil
 
 --
@@ -53,9 +56,24 @@ local function items(idx)
         end
     end
 end
+
+--
+-- Get or modify all itmes
+--
 local function allitems()
-    local feeds = dbget('SELECT id,guid,title,author,url,pubDate,content,unread,feedurl,enclosure_url,enclosure_type,enqueued,flags,base,(select title from rss_feed where rss_feed.rssurl = feedurl) as feedTitle FROM rss_item WHERE deleted = 0 ORDER BY pubDate DESC, id DESC ;"')
-    ngx.print(cjson.encode(feeds))
+    local method = ngx.req.get_method()
+    if method == 'PUT' then
+        -- TODO check for parameter (unread) ?
+        local sth, ok, err = dbexec([[ UPDATE rss_item SET unread = 0 ]])
+        if not ok then
+            ngx.print('{"success": false, "err": '..err..'}')
+        else
+            ngx.print('{"success": true}')
+        end
+    elseif method == 'GET' then
+        local feeds = dbget('SELECT id,guid,title,author,url,pubDate,content,unread,feedurl,enclosure_url,enclosure_type,enqueued,flags,base,(select title from rss_feed where rss_feed.rssurl = feedurl) as feedTitle FROM rss_item WHERE deleted = 0 ORDER BY pubDate DESC, id DESC ;"')
+        ngx.print(cjson.encode(feeds))
+    end
 end
 
 local function feeds()
@@ -76,6 +94,7 @@ end
 local function item(match)
     local id = assert(tonumber(match[1]))
     local method = ngx.req.get_method()
+    -- TODO check for parameter (unread)
     if method == 'PUT' then
         local sth, ok, err = dbexec([[
             UPDATE rss_item SET unread = 0 WHERE id = ]]..id ..[[ LIMIT 1 ]]
@@ -96,6 +115,10 @@ end
 local function refresh()
     -- for the demo copy a sample db back to newsbeuter.db
     local cmd = 'cp '..DBPATH..'.demo '..DBPATH
+    
+    if ngx.var.remote_addr == "172.16.36.100" then
+        cmd = 'newsbeuter -u /home/xt/.newsbeuter/urls -c /home/xt/.newsbeuter/cache.db -x reload'
+    end
     ngx.print(cmd)
     local exec = os.execute(cmd)
     ngx.print(exec)

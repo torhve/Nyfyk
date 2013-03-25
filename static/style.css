@@ -49,6 +49,11 @@ body {
   background-color: #fdfdfd;
 }
 
+header {
+    /* Firefox needs min height for some reason */
+    -moz-min-height: 43px;
+}
+
 .navbar .navbar-inner {
   padding-left: 20px;
   padding-right: 20px;
@@ -59,24 +64,22 @@ body {
 }
 
 .itemCount {
-  //width: 90px;
   text-align: center;
 }
 
 section.mainContent {
-  display: -webkit-box;
-  display: -moz-box;
-  display: box;
+  display: -webkit-flex;
+  display: flex;
 
-  -webkit-box-orient: horizontal;
-  -moz-box-orient: horizontal;
-  box-orient: horizontal;
+  -webkit-flex-direction: row;
+  flex-direction: row;
 
   overflow: hidden;
   height: 100%;
   width: 100%;
   box-sizing: border-box;
   padding-bottom: 0px;
+
 }
 
 section.mainContent div {
@@ -126,59 +129,39 @@ section.mainContent div {
 
 
 .tControls {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
+  display: -webkit-flex;
+  -webkit-flex-direction: column;
 
-  display: -moz-box;
-  -moz-box-orient: vertical;
+  display: flex;
+  flex-direction: column;
 
-  display: box;
-  box-orient: vertical;
+  display: -moz-flex;
+  -moz-flex-direction: column;
+
 }
 
 .controls div.top {
   min-height: 50px;
-  display: -webkit-box;
-  -webkit-box-align: start;
-  -webkit-box-flex: 1;
+  -webkit-flex: 1;
+  -webkit-flex-align: start;
 
-  display: -moz-box;
-  -moz-box-align: start;
-  -moz-box-flex: 1;
-
-  display: box;
-  box-align: start;
-  box-flex: 1;
+  flex: 1;
+  flex-align: start;
 }
 
 .controls div.middle {
   min-height: 185px;
-  display: -webkit-box;
-  -webkit-box-align: center;
-  -webkit-box-flex: 2;
-
-  display: -moz-box;
-  -moz-box-align: center;
-  -moz-box-flex: 2;
-
-  display: box;
-  box-align: center;
-  box-flex: 2;
+  -webkit-flex: 1;
+  flex: 1;
 }
 
 .controls div.bottom {
   min-height: 50px;
-  -webkit-box-flex: 1;
-  display: -webkit-box;
-  -webkit-box-align: end;
-
-  display: -moz-box;
-  -moz-box-align: end;
-  -moz-box-flex: 1;
-
-  display: box;
-  box-align: end;
-  box-flex: 1;
+  display: -webkit-flex;
+  -webkit-flex: 1;
+  flex: 1;
+  align-items: flex-end;
+  -webkit-align-items: flex-end;
 }
 
 .summaries {
@@ -193,6 +176,7 @@ section.mainContent div {
 .summary {
   color: #222;
   box-shadow: 5px 5px 5px rgba(210, 210, 210, 0.6);
+  box-sizing: border-box;
 }
 
 .summary.read {
@@ -217,11 +201,18 @@ section.mainContent div {
 .summary .title {}
 .summary .description {}
 
+.summary:hover {
+    border-left: 1px solid #2779d3;
+}
+
 .entries {
   padding: 10px;
   box-sizing: border-box;
-  -webkit-box-flex: 1;
-  -moz-box-flex: 1;
+
+
+  -webkit-flex: auto;
+        flex: auto;
+
   overflow-y: scroll;
   padding-left: 10px;
   -webkit-overflow-scrolling: touch;

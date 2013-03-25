@@ -32,6 +32,22 @@
           </a>
           <ul class="nav">
             <li class="divider-vertical"></li>
+            <li class="itemCount dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                {{items.feeds.length}} Feeds
+                <b class="caret"></b>
+            </a>
+             <ul class="dropdown-menu">
+              <li ng-repeat="feed in items.feeds"
+               ng-click="">
+               <a>
+                 {{feed}}
+               </a>
+              </li>
+             </ul>
+            </li>
+
+            <li class="divider-vertical"></li>
             <li class="itemCount"><a ng-click="showAll()">{{items.all.length}} Items</a></li>
             <li class="divider-vertical"></li>
             <li class="itemCount"><a ng-click="showUnread()">{{items.all.length - items.readCount}} Unread</a></li>
@@ -63,7 +79,6 @@
         <div class="top">
           <button ng-click="items.markAllRead()" class="btn" title="Mark all as read" alt="Mark all as read"><i class="icon-ok"></i></button>
         </div>
-        <br>
         <div class="middle">
           <button ng-click="items.prev()" class="btn" ng-disabled="!items.hasPrev()"><i class="icon-arrow-up"></i></button>
           <button ng-click="items.toggleStarred()" ng-disabled="!items.selected" class="btn">

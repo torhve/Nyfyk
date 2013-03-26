@@ -31,6 +31,7 @@
             Nyfyk
           </a>
           <ul class="nav">
+              <!--
             <li class="divider-vertical"></li>
             <li class="itemCount dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">
@@ -38,15 +39,14 @@
                 <b class="caret"></b>
             </a>
              <ul class="dropdown-menu">
-              <li ng-repeat="feed in items.feeds"
-               ng-click="">
+              <li ng-repeat="feed in items.feeds">
                <a>
                  {{feed}}
                </a>
               </li>
              </ul>
             </li>
-
+            -->
             <li class="divider-vertical"></li>
             <li class="itemCount"><a ng-click="showAll()">{{items.all.length}} Items</a></li>
             <li class="divider-vertical"></li>
@@ -64,8 +64,8 @@
             <!--<li><a ng-click="showSettings()"><i class="icon-cog icon-white"></i></a></li>-->
             <!--
             <li><a {{action "showUserConfig" on="click"}}><i class="icon-user icon-white"></i></a></li>
-            -->
             <li><a ng-click="refresh()" title="Refresh all feeds" alt="Refresh all feeds"><i class="icon-refresh icon-white"></i></a></li>
+            -->
           </ul>
         </div>
       </div>
@@ -77,6 +77,7 @@
     <section class="controls no-select">
       <div class="tControls">
         <div class="top">
+          <button ng-click="items.addFeed()" class="btn" title="Add subscription" alt="Add subscription"><i class="icon-plus-sign"></i></button>
           <button ng-click="items.markAllRead()" class="btn" title="Mark all as read" alt="Mark all as read"><i class="icon-ok"></i></button>
         </div>
         <div class="middle">
@@ -95,6 +96,28 @@
           </button>
         </div>
       </div>
+    </section>
+
+    <section class="feeds">
+      <article ng-repeat="feed in items.feeds"
+      ng-class="{read: feed.unreadCount == 0,active: feed.selected}" 
+               ng-click="items.selectFeed($index)"
+               class="feed"
+               >
+        <div class="row-fluid" >
+            <div class="span11 pub-title" >
+                <a>
+                    {{feed.title}}
+                </a>
+          </div>
+          <div class="span1">
+              <span 
+                  ng-class="{'badge-unread':feed.unreadCount>0}" class="badge">
+              {{ feed.unreadCount }}
+              </span>
+          </div>
+        </div>
+      </article>
     </section>
 
     <section class="summaries">

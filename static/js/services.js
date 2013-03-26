@@ -12,6 +12,14 @@ function Item(entry, feedTitle, feedUrl) {
   angular.extend(this, entry);
 }
 
+function Feed(title) {
+    this.unreadCount = 0;
+    this.readCount = 0;
+    this.title = title;
+    this.selected = false;
+}
+
+
 Item.prototype.$$hashKey = function() {
   return this.id;
 }
@@ -24,6 +32,7 @@ services.factory('items', ['$http', function($http) {
   var items = {
     all: [],
     feeds: [],
+    feedhash: {},
     filtered: [],
     selected: null,
     selectedIdx: null,
@@ -46,16 +55,22 @@ services.factory('items', ['$http', function($http) {
 
         items.all = [];
         items.feeds = [];
+        items.feedhash = {};
         console.log('data', data);
         feed = data.data;
 
         angular.forEach(feed, function(entry) {
-            var item = new Item(entry, feed.title, feed.url);
+            var item = new Item(entry, entry.title, entry.url);
             items.all.push(item);
             i++;
             // maintain unique list of feed titles
-            if(items.feeds.indexOf(entry.feedTitle) == -1) {
-                items.feeds.push(entry.feedTitle);
+            if(items.feedhash[entry.feedTitle] == undefined) {
+                var feed = new Feed(entry.feedTitle);
+                if(item.read)   feed.readCount++;
+                if(item.unread) feed.unreadCount++;
+
+                items.feedhash[entry.feedTitle] = feed;
+                items.feeds.push(feed);
             }
         });
         console.log("Entries loaded from backend:", i);
@@ -63,9 +78,8 @@ services.factory('items', ['$http', function($http) {
         items.all.sort(function(entryA, entryB) {
             return entryB.pubDate - entryA.pubDate;
         });
-        items.feeds.sort(function(entryA, entryB) {
-            return entryB - entryA;
-        });
+        // Sort feeds
+        //items.feeds.sort();
 
         // Default show unread
         items.filtered = items.all.filter(function(item) {
@@ -123,6 +137,7 @@ services.factory('items', ['$http', function($http) {
       items.selected.selected = true;
 
       if (!items.selected.read) items.toggleRead();
+
     },
 
 
@@ -132,11 +147,14 @@ services.factory('items', ['$http', function($http) {
 
       item.read = read;
       //feedStore.updateEntryProp(item.feedUrl, item.id, 'read', read);
-      console.log('Fixme', 'toggleRead id:', item.id);
+      console.log('toggleRead id:', item.id);
       $http.put('/nyfyk/api/items/'+item.id, {'unread': 0}).success(function(data) {
           console.log('Toggleread backend said', data);
       });
       items.readCount += read ? 1 : -1;
+
+      items.feedhash[item.feedTitle].unreadCount += read ? -1 : 1;
+      items.feedhash[item.feedTitle].readCount += read ? -1 : 1;
     },
 
 
@@ -166,6 +184,19 @@ services.factory('items', ['$http', function($http) {
     filterBy: function(key, value) {
       items.filtered = items.all.filter(function(item) {
         return item[key] === value;
+      });
+      items.reindexSelectedItem();
+    },
+
+    selectFeed: function(idx) {
+      var feed = items.feeds[idx];
+      items.feeds.forEach(function(feed) {
+          feed.selected = false;
+      });
+      feed.selected = true;
+      
+      items.filtered = items.all.filter(function(item) {
+        return item.feedTitle == feed.title;
       });
       items.reindexSelectedItem();
     },

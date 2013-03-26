@@ -39,7 +39,6 @@ html {
 
 body {
   height: 100%;
-  padding-top: 40px;
   overflow: hidden;
   box-sizing: border-box;
 
@@ -50,8 +49,6 @@ body {
 }
 
 header {
-    /* Firefox needs min height for some reason */
-    -moz-min-height: 43px;
 }
 
 .navbar .navbar-inner {
@@ -61,6 +58,8 @@ header {
 
 .navbar .container {
   width: 100%;
+}
+.navbar {
 }
 
 .itemCount {
@@ -79,6 +78,7 @@ section.mainContent {
   width: 100%;
   box-sizing: border-box;
   padding-bottom: 0px;
+  padding-top: 40px;
 
 }
 
@@ -164,6 +164,23 @@ section.mainContent div {
   -webkit-align-items: flex-end;
 }
 
+.feeds {
+  box-sizing: border-box;
+  /*
+
+  overflow-y: scroll;
+  */
+  width: 250px;
+  -webkit-overflow-scrolling: touch;
+  background: #eee;
+
+  padding:10px;
+}
+.feeds a, .feeds a:hover {
+    color: #222;
+    text-decoration: none;
+    cursor: pointer;
+}
 .summaries {
   box-sizing: border-box;
   padding: 10px;
@@ -179,8 +196,15 @@ section.mainContent div {
   box-sizing: border-box;
 }
 
-.summary.read {
+.summary.read, .feed.read {
   opacity: 0.6;
+}
+
+.feed.active {
+      color: white;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      border-left: 2px solid  #2779d3;
+      opacity: 1.0;
 }
 
 .summary.active {
@@ -296,6 +320,12 @@ section.mainContent div {
   -o-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+.unread {
+    font-weight: bold;
+}
+.badge-unread {
+    background-color: #2779d3;
 }
 .primary, .brand i, .navbar .brand, i.icon-rss {
     color: #2779d3;

@@ -41,6 +41,7 @@ body {
   height: 100%;
   overflow: hidden;
   box-sizing: border-box;
+  -moz-box-sizing: border-box;
 
   color: #222;
   /*font-family: 'Open Sans', 'Georgia', sans-serif;*/
@@ -67,6 +68,10 @@ header {
 }
 
 section.mainContent {
+  padding-top: 40px;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+
   display: -webkit-flex;
   display: flex;
 
@@ -76,9 +81,7 @@ section.mainContent {
   overflow: hidden;
   height: 100%;
   width: 100%;
-  box-sizing: border-box;
   padding-bottom: 0px;
-  padding-top: 40px;
 
 }
 
@@ -88,6 +91,7 @@ section.mainContent div {
 
 .controls {
   box-sizing: border-box;
+  -moz-box-sizing: border-box;
   padding: 5px;
   width: 50px;
   margin: 0;
@@ -113,7 +117,6 @@ section.mainContent div {
   background-repeat: repeat-x;
   border: 1px solid #d4d4d4;
   -webkit-border-radius: 4px;
-  -moz-border-radius: 4px;
   border-radius: 4px;
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffffff', endColorstr='#fff2f2f2', GradientType=1);
   -webkit-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.065);
@@ -160,16 +163,17 @@ section.mainContent div {
   display: -webkit-flex;
   -webkit-flex: 1;
   flex: 1;
-  align-items: flex-end;
+  justify-content: flex-end;
   -webkit-align-items: flex-end;
+  align-content: flex-end;
 }
 
 .feeds {
   box-sizing: border-box;
-  /*
+  -moz-box-sizing: border-box;
 
   overflow-y: scroll;
-  */
+  overflow-x: hidden;
   width: 250px;
   -webkit-overflow-scrolling: touch;
   background: #eee;
@@ -183,6 +187,7 @@ section.mainContent div {
 }
 .summaries {
   box-sizing: border-box;
+  -moz-box-sizing: border-box;
   padding: 10px;
   overflow-y: scroll;
   width: 300px;
@@ -194,6 +199,7 @@ section.mainContent div {
   color: #222;
   box-shadow: 5px 5px 5px rgba(210, 210, 210, 0.6);
   box-sizing: border-box;
+  -moz-box-sizing: border-box;
 }
 
 .summary.read, .feed.read {
@@ -232,18 +238,21 @@ section.mainContent div {
 .entries {
   padding: 10px;
   box-sizing: border-box;
+  -moz-box-sizing: border-box;
 
 
   -webkit-flex: auto;
-        flex: auto;
+        flex: 1;
 
   overflow-y: scroll;
   padding-left: 10px;
   -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
 }
 
 .entry {
   -webkit-transition: all 0.5s ease-in-out;
+  transition: all 0.5s ease-in-out;
   box-shadow: 5px 5px 5px rgba(210, 210, 210, 0.6);
 }
 
@@ -277,6 +286,8 @@ section.mainContent div {
 .entry .actions input[type=checkbox] {
   -webkit-appearance: none;
   -webkit-box-shadow: transparent;
+  appearance: none;
+  box-shadow: transparent;
   border: 0;
   display: inline-block;
   font-size: 15px;
@@ -286,25 +297,9 @@ section.mainContent div {
   width: 1.25em;
   height: 1.25em;
   -webkit-border-radius: 0.25em;
+  border-radius: 0.25em;
   vertical-align: text-top;
-  /*background-image: url("../img/glyphicons-halflings.png");*/
  }
-
-.entry .actions input[type=checkbox].star {
-  background-position: -144px 0;
-}
-
-.entry .actions input[type=checkbox].star:checked {
-  background-position: -120px 0;
-}
-
-.entry .actions input[type=checkbox].read {
-  background-position: -192px -96px;
-}
-
-.entry .actions input[type=checkbox].read:checked {
-  background-position: -72px -96px
-}
 
 .nothingSelected {
   text-align: center;

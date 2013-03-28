@@ -3,7 +3,7 @@ local cjson = require "cjson"
 local os = require 'os'
 
 local DBPATH = '/home/xt/src/nyfyk/db/newsbeuter.db'
-if ngx.var.remote_addr == "172.16.36.101" then
+if ngx.var.remote_addr == "172.16.36.100" then
     DBPATH = '/home/xt/.newsbeuter/cache.db'
 end
 local dbh  = nil
@@ -116,7 +116,7 @@ local function refresh()
     -- for the demo copy a sample db back to newsbeuter.db
     local cmd = 'cp '..DBPATH..'.demo '..DBPATH
     
-    if ngx.var.remote_addr == "172.16.36.101" then
+    if ngx.var.remote_addr == "172.16.36.100" then
         cmd = 'newsbeuter -u /home/xt/.newsbeuter/urls -c /home/xt/.newsbeuter/cache.db -x reload'
     end
     ngx.print(cmd)

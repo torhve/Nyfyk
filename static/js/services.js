@@ -227,6 +227,7 @@ services.factory('items', ['$http', function($http) {
     refreshFeeds: function() {
         $http.get('/nyfyk/api/refresh/').then(function(data) {
             console.log(data);
+            items.getItemsFromBackend();
         });
     }
   };

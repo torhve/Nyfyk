@@ -179,6 +179,7 @@ section.mainContent div {
   background: #eee;
 
   padding:10px;
+  padding-right: 20px;
 }
 .feeds a, .feeds a:hover {
     color: #222;

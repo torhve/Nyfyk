@@ -66,11 +66,13 @@ services.factory('items', ['$http', function($http) {
             // maintain unique list of feed titles
             if(items.feedhash[entry.feedTitle] == undefined) {
                 var feed = new Feed(entry.feedTitle);
-                if(item.read)   feed.readCount++;
-                if(item.unread) feed.unreadCount++;
-
                 items.feedhash[entry.feedTitle] = feed;
                 items.feeds.push(feed);
+
+            }else {
+                var feed = items.feedhash[entry.feedTitle];
+                if(item.read)   feed.readCount++;
+                if(item.unread) feed.unreadCount++;
             }
         });
         console.log("Entries loaded from backend:", i);

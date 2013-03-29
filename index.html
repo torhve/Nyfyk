@@ -2,6 +2,7 @@
 <html lang="en" ng-app="Nyfyk" ng-csp>
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge"> 
 
   <title>Nyfyk</title>
   <link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
@@ -18,6 +19,7 @@
   <script src="static/js/filters.js"></script>
   <script src="static/js/services.js"></script>
   <script src="static/js/directives.js"></script>
+
 </head>
 <body ng-controller="AppController" ng-cloak w-keydown w-space="handleSpace()"
       w-down="items.next()" w-up="items.prev()" w-read="items.toggleRead()" w-star="items.toggleStarred()" >
@@ -60,12 +62,13 @@
           <form class="navbar-search pull-left" id="navSearch">
             <input type="search" ng-model="$parent.search" class="search-query" placeholder="Search">
           </form>
-          <ul class="nav pull-right">
+          <ul class="nav pull-right" ng-controller="PersonaCtrl">
             <!--<li><a ng-click="showSettings()"><i class="icon-cog icon-white"></i></a></li>-->
             <!--
             <li><a {{action "showUserConfig" on="click"}}><i class="icon-user icon-white"></i></a></li>
-            <li><a ng-click="refresh()" title="Refresh all feeds" alt="Refresh all feeds"><i class="icon-refresh icon-white"></i></a></li>
             -->
+            <li ng-hide="verified"><a ng-click="verify()" title="Login" alt="Login">Sign in <i class="icon-angle-right icon-white"></i></a></li>
+            <li ng-show="verified"><a ng-click="logout()" title="Login" alt="Login">Log out {{ email }} <i class="icon-angle-right"></i></a></li>
           </ul>
         </div>
       </div>
@@ -194,5 +197,6 @@
     </div>
   </div>
 
+  <script src="https://login.persona.org/include.js"></script>
 </body>
 </html>

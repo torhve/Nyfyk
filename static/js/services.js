@@ -286,3 +286,36 @@ services.factory('bgPage', function() {
     }
   };
 });
+
+services.factory("personaSvc", ["$http", "$q", function ($http, $q) {
+
+  return {
+        verify:function () {
+            var deferred = $q.defer();
+            navigator.id.get(function (assertion) {
+                $http.post("/nyfyk/api/persona/verify", {assertion:assertion})
+                    .then(function (response) {
+                        if (response.data.status != "okay") {
+                            deferred.reject(response.data.reason);
+                        } else {
+                            deferred.resolve(response.data.email);
+                        }
+                    });
+            });
+            return deferred.promise;
+        },
+        logout:function () {
+            return $http.post("/nyfyk/api/persona/logout").then(function (response) {
+                if (response.data.status != "okay") {
+                    $q.reject(response.data.reason);
+                }
+                return response.data.email;
+            });
+        },
+        status:function () {
+            return $http.post("/nyfyk/api/persona/status").then(function (response) {
+                return response.data;
+            });
+        }
+    };
+}]);

@@ -91,7 +91,6 @@ end
 local function allitems()
     local method = ngx.req.get_method()
     if method == 'PUT' then
-        -- TODO check for parameter (unread) ?
         local sth, ok, err = dbexec([[ UPDATE rss_item SET unread = 0 ]])
         if not ok then
             ngx.print('{"success": false, "err": '..err..'}')
@@ -124,8 +123,17 @@ local function item(match)
     local method = ngx.req.get_method()
     -- TODO check for parameter (unread)
     if method == 'PUT' then
+        -- TODO check for parameter (unread) ?
+        ngx.req.read_body()
+        -- app is sending application/json
+        local args = cjson.decode(ngx.req.get_body_data())
+        -- make sure it's a number
+        local unread = assert(tonumber(args.unread))
         local sth, ok, err = dbexec([[
-            UPDATE rss_item SET unread = 0 WHERE id = ]]..id ..[[ LIMIT 1 ]]
+            UPDATE rss_item 
+            SET unread = ]]..unread..[[ 
+            WHERE id = ]]..id ..[[ 
+            LIMIT 1 ]]
         )
         if not ok then
             ngx.print(ok)
@@ -159,7 +167,6 @@ end
 local function get_current_email()
     local cookie = ngx.var['cookie_session']
     if cookie then
-        ngx.log(ngx.ERR, cookie)
         local sess = getsess(cookie)
         if sess ~= ngx.null then
             sess = cjson.decode(sess)

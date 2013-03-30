@@ -150,7 +150,7 @@ services.factory('items', ['$http', function($http) {
       item.read = read;
       //feedStore.updateEntryProp(item.feedUrl, item.id, 'read', read);
       console.log('toggleRead id:', item.id);
-      $http.put('/nyfyk/api/items/'+item.id, {'unread': 0}).success(function(data) {
+      $http.put('/nyfyk/api/items/'+item.id, {'unread': read ? 0 : 1}).success(function(data) {
           console.log('Toggleread backend said', data);
       });
       items.readCount += read ? 1 : -1;

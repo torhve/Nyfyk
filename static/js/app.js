@@ -29,6 +29,16 @@ function AppController($scope, items, scroll, bgPage) {
   $scope.$watch('items.selectedIdx', function(newVal) {
     if (newVal !== null) scroll.toCurrent();
   });
+
+  $scope.addFeed = function() {
+
+      var url = $scope.newfeedurl;
+      var cat = $scope.newfeedcategory;
+      items.addFeed(url, cat);
+      // Clear form
+      url = '';
+      cat = '';
+  }
 }
 
 
@@ -52,7 +62,7 @@ function NavBarController($scope, items) {
   };
 }
 
-
+// Persona controller, for handling login/logout/etc
 function PersonaCtrl($scope, personaSvc) {
     // initialize properties
     angular.extend($scope, { verified:false, error:false, email:"" });

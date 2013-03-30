@@ -36,6 +36,30 @@ local function end_redis()
     end
 end
 
+local function getsess(sessionid)
+    return red:get('nyfyk:session:'..sessionid)
+end
+
+local function get_current_email()
+    local cookie = ngx.var['cookie_session']
+    if cookie then
+        local sess = getsess(cookie)
+        if sess ~= ngx.null then
+            sess = cjson.decode(sess)
+            return sess.email
+        end
+    end
+    return false
+end
+
+local function setsess(personadata)
+    -- Set cookie for session
+    local sessionid = ngx.md5(personadata.email .. ngx.md5(personadata.expires))
+    ngx.header['Set-Cookie'] = 'session='..sessionid..'; path=/; HttpOnly'
+    red:set('nyfyk:session:'..sessionid, cjson.encode(personadata))
+    -- Expire the key when the session expires, so if key exists login is valid
+    red:expire('nyfyk:session:'..sessionid, personadata.expires)
+end
 --
 -- Helper function to execute statements
 --
@@ -116,6 +140,32 @@ local function feeds()
 end
 
 --
+-- Add new feed
+--
+-- newsbeuter has a simple text file called urls, which we will add a line to
+--
+local function addfeed(match)
+    -- FIXME demo/multiuser
+    if get_current_email() == 'tor@hveem.no' then
+        ngx.req.read_body()
+        -- app is sending application/json
+        local args = cjson.decode(ngx.req.get_body_data())
+        -- make sure it's a number
+        local url = args.url
+        local cat = args.cat
+        if url and cat then
+            URLSPATH = '/home/xt/.newsbeuter/urls'
+            -- append mode
+            file = io.open(URLSPATH, 'a+')
+            file:write(url..' "'..cat..'"\n')
+            file:close()
+            ngx.print( cjson.encode({ success = true }) )
+        end
+    end
+    ngx.print( cjson.encode({ success = false }) )
+end
+
+--
 -- Take parameters from a PUT request and overwrite the record with new values
 --
 local function item(match)
@@ -123,7 +173,6 @@ local function item(match)
     local method = ngx.req.get_method()
     -- TODO check for parameter (unread)
     if method == 'PUT' then
-        -- TODO check for parameter (unread) ?
         ngx.req.read_body()
         -- app is sending application/json
         local args = cjson.decode(ngx.req.get_body_data())
@@ -160,30 +209,6 @@ local function refresh()
     ngx.print(exec)
 end
 
-local function getsess(sessionid)
-    return red:get('nyfyk:session:'..sessionid)
-end
-
-local function get_current_email()
-    local cookie = ngx.var['cookie_session']
-    if cookie then
-        local sess = getsess(cookie)
-        if sess ~= ngx.null then
-            sess = cjson.decode(sess)
-            return sess.email
-        end
-    end
-    return false
-end
-
-local function setsess(personadata)
-    -- Set cookie for session
-    local sessionid = ngx.md5(personadata.email .. ngx.md5(personadata.expires))
-    ngx.header['Set-Cookie'] = 'session='..sessionid..'; path=/; HttpOnly'
-    red:set('nyfyk:session:'..sessionid, cjson.encode(personadata))
-    -- Expire the key when the session expires, so if key exists login is valid
-    red:expire('nyfyk:session:'..sessionid, personadata.expires)
-end
 
 local function login()
     ngx.req.read_body()
@@ -225,6 +250,7 @@ end
 -- mapping patterns to views
 local routes = {
     ['feeds/$']     = feeds,
+    ['addfeed/$']     = addfeed,
     ['items/?$'] = allitems,
     ['items/(\\d+)/?$'] = item,
     ['refresh/$']     = refresh,

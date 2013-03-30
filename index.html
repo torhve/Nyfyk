@@ -80,7 +80,7 @@
     <section class="controls no-select">
       <div class="tControls">
         <div class="top">
-          <button ng-click="items.addFeed()" class="btn" title="Add subscription" alt="Add subscription"><i class="icon-plus-sign"></i></button>
+          <button data-toggle="modal" class="btn" href="#modalFeed" title="Add subscription" alt="Add subscription"><i class="icon-plus-sign"></i></button>
           <button ng-click="items.markAllRead()" class="btn" title="Mark all as read" alt="Mark all as read"><i class="icon-ok"></i></button>
         </div>
         <div class="middle">
@@ -196,6 +196,23 @@
     </div>
     <div class="modal-footer">
       <a data-dismiss="modal" class="btn btn-primary">Close</a>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalFeed">
+    <div class="modal-header">
+      <a class="close" data-dismiss="modal">×</a>
+      <h3>Add Feed</h3>
+      <label>URL</label>
+      <input ng-model="newfeedurl" type="text">
+      <label>Category</label>
+      <input ng-model="newfeedcategory" type="text">
+    </div>
+    <div class="modal-body">
+    </div>
+    <div class="modal-footer">
+      <a data-dismiss="modal" ng-click="addFeed()" class="btn btn-primary">Add feed</a>
+      <a data-dismiss="modal" class="btn">Close</a>
     </div>
   </div>
 

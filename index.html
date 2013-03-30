@@ -102,7 +102,7 @@
     </section>
 
     <section class="feeds scrollable">
-      <article ng-repeat="feed in items.feeds"
+      <article ng-repeat="feed in items.feeds | filter: search | orderBy:['-unreadCount','title']"
       ng-class="{read: feed.unreadCount == 0,active: feed.selected}" 
                ng-click="items.selectFeed($index)"
                class="feed"

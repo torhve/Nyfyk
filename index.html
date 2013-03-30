@@ -68,7 +68,7 @@
             <li><a {{action "showUserConfig" on="click"}}><i class="icon-user icon-white"></i></a></li>
             -->
             <li ng-hide="verified"><a ng-click="verify()" title="Login" alt="Login">Sign in <i class="icon-angle-right icon-white"></i></a></li>
-            <li ng-show="verified"><a ng-click="logout()" title="Login" alt="Login">Log out {{ email }} <i class="icon-angle-right"></i></a></li>
+            <li ng-show="verified"><a ng-click="logout()" title="You are logged in as {{ email }}" alt="You are logged in as {{ email }}">Log out <i class="icon-angle-right"></i></a></li>
           </ul>
         </div>
       </div>
@@ -191,6 +191,8 @@
          Chrome Platform port by <a href="http://igorminar.com">Igor Minar</a>.
          Newsbeuter backend switch by <a href="http://hveem.no/">Tor Hveem</a>
       <p/>
+      <h3>Source</h3>
+      <p>Visit <a href="http://github.com/torhve/Nyfyk">github.com/torhve/Nyfyk</a></p>
     </div>
     <div class="modal-footer">
       <a data-dismiss="modal" class="btn btn-primary">Close</a>

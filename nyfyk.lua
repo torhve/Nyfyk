@@ -157,9 +157,11 @@ local function addfeed(match)
             URLSPATH = '/home/xt/.newsbeuter/urls'
             -- append mode
             file = io.open(URLSPATH, 'a+')
-            file:write(url..' "'..cat..'"\n')
-            file:close()
-            ngx.print( cjson.encode({ success = true }) )
+            if file then -- maybe no permission ?
+                file:write(url..' "'..cat..'"\n')
+                file:close()
+                ngx.print( cjson.encode({ success = true }) )
+            end
         end
     end
     ngx.print( cjson.encode({ success = false }) )

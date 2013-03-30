@@ -197,7 +197,7 @@ services.factory('items', ['$http', function($http) {
     },
 
     selectFeed: function(idx) {
-      var feed = items.feeds[idx];
+      var feed = items.feedhash[idx];
       items.feeds.forEach(function(feed) {
           feed.selected = false;
       });

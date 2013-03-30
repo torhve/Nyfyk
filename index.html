@@ -104,7 +104,7 @@
     <section class="feeds scrollable">
       <article ng-repeat="feed in items.feeds | filter: search | orderBy:['-unreadCount','title']"
       ng-class="{read: feed.unreadCount == 0,active: feed.selected}" 
-               ng-click="items.selectFeed($index)"
+               ng-click="items.selectFeed(feed.title)"
                class="feed"
                >
         <div class="row-fluid" >

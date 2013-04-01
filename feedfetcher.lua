@@ -10,36 +10,48 @@ local gsub, strfind, strformat = string.gsub, string.find, string.format
 -- Set the content type
 ngx.header.content_type = 'application/json';
 
-local function escape (s, char, sub)
-    if not s then return '' end
-    char = char or "%s"
-    sub = sub or "\\\\%1"
-    S = gsub (s, "[%z\\1\2\3\4\5\6\7\8\11\12\14\15\16\17\18\19\20\21\22\23\24\25\26\27\28\29\30\31]", "")
-    s = gsub (s, "("..char..")", sub)
-    return s
+function trim(s)
+  if not s then return '' end
+  
+  return (s:gsub('^%s*(.-)%s*$', '%1'))
 end
 
-local function quote (s, quote, sub)
-    if not s then return '' end
-    quote = quote or "'"
-    sub = sub or "\\'"
-    if type(s) == "number" or strfind (s, "^(%b())$") then
-        return s
-    else
-        return quote..escape (escape (s, "\\\\", "\\\\\\\\"), quote, sub)..quote
-    end
+function escapePostgresParam(...)
+  local url      = '/postgresescape?param='
+  local requests = {}
+  
+  for i = 1, select('#', ...) do
+    local param = ngx.escape_uri((select(i, ...)))
+    
+    table.insert(requests, {url .. param})
+  end
+  
+  local results = {ngx.location.capture_multi(requests)}
+  for k, v in pairs(results) do
+    results[k] = trim(v.body)
+  end
+  
+  return unpack(results)
 end
 
 -- The function sending subreq to nginx postgresql location with rds_json on
 -- returns json body to the caller
 local function dbreq(sql, donotdecode)
     ngx.log(ngx.ERR, '-*- SQL -*-: ' .. sql)
-    local dbreq = ngx.location.capture("/pg", { args = { sql = sql } })
-    local json = dbreq.body
-    if donotdecode then
-        return json
+
+    local params = {
+        method = ngx.HTTP_POST,
+        body   = sql
+    }
+    local result = ngx.location.capture("/pg", params)
+    if result.status ~= ngx.HTTP_OK or not result.body then
+        return nil
     end
-    return cjson.decode(json)
+    local body = result.body
+    if donotdecode then
+        return body
+    end
+    return (cjson.decode(body) or {})
 end
 
 local function fetch(url, feed)
@@ -52,6 +64,7 @@ end
 
 local function save(feed, parsed)
     if not feed then return end
+    local quote = escapePostgresParam
     -- update rss_feed
     local feedres = dbreq(sprintf('SELECT * from rss_feed where rssurl = E%s', quote(feed.rssurl)))[1]
     if not feedres.id then
@@ -128,5 +141,4 @@ local function get_feeds()
     local res = dbreq('SELECT * FROM rss_feed');
     refresh_feeds(res)
 end
-
 get_feeds()

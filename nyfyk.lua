@@ -2,64 +2,15 @@ local dbi = require 'DBI'
 local cjson = require "cjson"
 local os = require 'os'
 local persona = require 'persona'
-local redis = require "resty.redis"
+local spawn = ngx.thread.spawn
+local wait = ngx.thread.wait
+local say = ngx.say
 
 local DBPATH = '/home/xt/src/nyfyk/db/newsbeuter.db'
 -- sqlite
 local dbh  = nil
--- redis
-local red  = nil
 
--- 
--- Initialise db
---
-local function init_redis()
-    -- Start redis connection
-    red = redis:new()
-    local ok, err = red:connect("unix:/var/run/redis/redis.sock")
-    if not ok then
-        ngx.say("failed to connect: ", err)
-        return
-    end
-end
 
---
--- End db, we could close here, but park it in the pool instead
---
-local function end_redis()
-    -- put it into the connection pool of size 100,
-    -- with 0 idle timeout
-    local ok, err = red:set_keepalive(0, 100)
-    if not ok then
-        ngx.say("failed to set keepalive: ", err)
-        return
-    end
-end
-
-local function getsess(sessionid)
-    return red:get('nyfyk:session:'..sessionid)
-end
-
-local function get_current_email()
-    local cookie = ngx.var['cookie_session']
-    if cookie then
-        local sess = getsess(cookie)
-        if sess ~= ngx.null then
-            sess = cjson.decode(sess)
-            return sess.email
-        end
-    end
-    return false
-end
-
-local function setsess(personadata)
-    -- Set cookie for session
-    local sessionid = ngx.md5(personadata.email .. ngx.md5(personadata.expires))
-    ngx.header['Set-Cookie'] = 'session='..sessionid..'; path=/; HttpOnly'
-    red:set('nyfyk:session:'..sessionid, cjson.encode(personadata))
-    -- Expire the key when the session expires, so if key exists login is valid
-    red:expire('nyfyk:session:'..sessionid, personadata.expires)
-end
 --
 -- Helper function to execute statements
 --
@@ -146,7 +97,7 @@ end
 --
 local function addfeed(match)
     -- FIXME demo/multiuser
-    if get_current_email() == 'tor@hveem.no' then
+    if persona.get_current_email() == 'tor@hveem.no' then
         ngx.req.read_body()
         -- app is sending application/json
         local args = cjson.decode(ngx.req.get_body_data())
@@ -203,7 +154,7 @@ local function refresh()
     -- for the demo copy a sample db back to newsbeuter.db
     local cmd = 'cp '..DBPATH..'.demo '..DBPATH
     
-    if get_current_email() == 'tor@hveem.no' then
+    if persona.get_current_email() == 'tor@hveem.no' then
         cmd = 'newsbeuter -u /home/xt/.newsbeuter/urls -c /home/xt/.newsbeuter/cache.db -x reload'
     end
     ngx.print(cmd)
@@ -212,43 +163,6 @@ local function refresh()
 end
 
 
-local function login()
-    ngx.req.read_body()
-    -- app is sending application/json
-    local body = ngx.req.get_body_data()
-    if body then 
-        local args = cjson.decode(body)
-        local audience = 'nyfyk.hveem.no'
-        local personadata = persona.login(args.assertion, audience)
-        if personadata.status == 'okay' then
-            setsess(personadata)
-        end
-        -- Print the data back to client
-        ngx.print(cjson.encode(personadata))
-    else
-        ngx.print ( cjson.encode({ email = false}) )
-    end
-end
-
-local function persona_status()
-    local cookie = ngx.var['cookie_session']
-    if cookie then
-        ngx.print (getsess(cookie))
-    else
-        ngx.print ( '{"email":false}' )
-    end
-end
-
-local function logout()
-    local cookie = ngx.var['cookie_session']
-    if cookie then
-        ngx.print(red:del('nyfyk:session:'..cookie))
-        ngx.print( 'true' )
-    else
-        ngx.print( 'false' )
-    end
-end
-
 -- mapping patterns to views
 local routes = {
     ['feeds/$']     = feeds,
@@ -256,9 +170,9 @@ local routes = {
     ['items/?$'] = allitems,
     ['items/(\\d+)/?$'] = item,
     ['refresh/$']     = refresh,
-    ['persona/verify$']  = login,
-    ['persona/logout$']  = logout,
-    ['persona/status$']  = persona_status,
+    ['persona/verify$']  = persona.login,
+    ['persona/logout$']  = persona.logout,
+    ['persona/status$']  = persona.status,
 }
 -- Set the content type
 ngx.header.content_type = 'application/json';
@@ -269,8 +183,7 @@ for pattern, view in pairs(routes) do
     local uri = '^' .. BASE .. pattern
     local match = ngx.re.match(ngx.var.uri, uri, "") -- regex mather in compile mode
     if match then
-        init_redis()
-        if get_current_email() == 'tor@hveem.no' then
+        if persona.get_current_email() == 'tor@hveem.no' then
             DBPATH = '/home/xt/.newsbeuter/cache.db'
         end
         dbh = assert(DBI.Connect('SQLite3', DBPATH, nil, nil, nil, nil))
@@ -279,7 +192,6 @@ for pattern, view in pairs(routes) do
         -- finish up
         --local ok = dbh:commit()
         local ok = dbh:close()
-        end_redis()
         ngx.exit( exit )
     end
 end

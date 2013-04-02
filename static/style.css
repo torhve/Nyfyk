@@ -326,4 +326,6 @@ section.mainContent div {
 .primary, .brand i, .navbar .brand, i.icon-rss {
     color: #2779d3;
 }
-
+.hidden {
+    display: none !important;
+}

@@ -113,7 +113,7 @@
                     {{feed.title}}
                 </a>
           </div>
-          <div class="span1">
+          <div ng-class="{'hidden':feed.unreadCount==0}" class="span1">
               <span 
                   ng-class="{'badge-unread':feed.unreadCount>0}" class="badge">
               {{ feed.unreadCount }}

@@ -5,54 +5,12 @@ local sprintf = string.format
 local print = ngx.print
 local cjson = require 'cjson'
 local feedparser = require 'feedparser'
-local gsub, strfind, strformat = string.gsub, string.find, string.format
+local gsub, strfind, strformat, strsub = string.gsub, string.find, string.format, string.sub
+local db = require 'dbutil'
 
 -- Set the content type
 ngx.header.content_type = 'application/json';
 
-function trim(s)
-  if not s then return '' end
-  
-  return (s:gsub('^%s*(.-)%s*$', '%1'))
-end
-
-function escapePostgresParam(...)
-  local url      = '/postgresescape?param='
-  local requests = {}
-  
-  for i = 1, select('#', ...) do
-    local param = ngx.escape_uri((select(i, ...)))
-    
-    table.insert(requests, {url .. param})
-  end
-  
-  local results = {ngx.location.capture_multi(requests)}
-  for k, v in pairs(results) do
-    results[k] = trim(v.body)
-  end
-  
-  return unpack(results)
-end
-
--- The function sending subreq to nginx postgresql location with rds_json on
--- returns json body to the caller
-local function dbreq(sql, donotdecode)
-    ngx.log(ngx.ERR, '-*- SQL -*-: ' .. sql)
-
-    local params = {
-        method = ngx.HTTP_POST,
-        body   = sql
-    }
-    local result = ngx.location.capture("/pg", params)
-    if result.status ~= ngx.HTTP_OK or not result.body then
-        return nil
-    end
-    local body = result.body
-    if donotdecode then
-        return body
-    end
-    return (cjson.decode(body) or {})
-end
 
 local function fetch(url, feed)
     --ngx.log(ngx.ERR, 'Fetching path:'..path..', from host:'..host)
@@ -64,32 +22,44 @@ end
 
 local function save(feed, parsed)
     if not feed then return end
-    local quote = escapePostgresParam
-    -- update rss_feed
-    local feedres = dbreq(sprintf('SELECT * from rss_feed where rssurl = E%s', quote(feed.rssurl)))[1]
+    if not parsed then say('FUCKUP WITH PARSING') return  end
+    local quote = dbutil.escapePostgresParam
+    -- check that rss_feed exists
+    local feedres = db.dbreq(sprintf('SELECT * from rss_feed where rssurl = E%s', quote(feed.rssurl)))[1]
     if not feedres.id then
         say('Could not find feed with URL:'..feed.rssurl)
         return
     end
-    say('got ID' .. tostring(feedres.id))
     local rss_feed = feedres.id
+    -- save parsed values to rss_feed
+    local title = quote(parsed.feed.title)
+    local author = quote(parsed.feed.author)
+    local url = quote(parsed.feed.link)
 
-    -- insert entries
+    db.dbreq(sprintf('UPDATE rss_feed SET title=%s, author=%s, url=%s, lastmodified=CURRENT_TIMESTAMP WHERE id=%s', title, author, url, rss_feed))
+
+
+    --[[ insert entries
     for i, e in ipairs(parsed.entries) do
         local guid = e.guid
         if not guid then guid = e.link end
         local content = e.content
         if not content then content = e.summary end
         local sql = sprintf('INSERT INTO rss_item (rss_feed, guid, title, url, pubDate, content) VALUES (%s, %s, %s, %s, %s, E%s)', rss_feed, quote(guid), quote(e.title), quote(e.link), quote(e.updated), quote(content))
-        local res = dbreq(sql, true)
-    end
+        local res = db.dbreq(sql, true)
+    end]]
+    return
 end
 
 local function parse(feed, body)
     local parsed = feedparser.parse(body)
     say(cjson.encode(parsed))
-    save(feed, parsed)
-    return 'Parse successful'
+    if save(feed, parsed) then
+        return 'Parse successful'
+    else 
+        return 'FUCKUP WITH SAVING'
+    end
+
 end
 
 local function wait_and_parse(threads)
@@ -138,7 +108,60 @@ local function refresh_feeds(feeds)
 end
 
 local function get_feeds()
-    local res = dbreq('SELECT * FROM rss_feed');
+    local res = db.dbreq('SELECT * FROM rss_feed');
     refresh_feeds(res)
 end
-get_feeds()
+
+local function get_missing_feeds()
+    local res = db.dbreq("SELECT * FROM rss_feed where title IS NULL");
+    refresh_feeds(res)
+end
+
+local function get_feed(match)
+    local id = assert(tonumber(match[1]))
+    local res = db.dbreq(sprintf('SELECT * FROM rss_feed WHERE id = %s', id))
+    refresh_feeds(res)
+end
+
+local function addalotofurls()
+    local io = require 'io'
+    local file = io.open('/home/xt/.newsbeuter/urls', 'r') 
+    local lines = file:lines()
+    for line in lines do
+        local spacespos = string.find(line, ' ')
+        local spacepos = strfind(line,' ')
+        local url = nil
+        if not spacepos then 
+            url = line 
+        else 
+            url = string.sub(line, 1, spacepos)
+        end
+        say(url)
+        db.dbreq('INSERT INTO rss_feed (rssurl) VALUES ('..dbutil.escapePostgresParam(url)..')')
+    end
+    file:close()
+end
+--addalotofurls()
+
+-- mapping patterns to views
+local routes = {
+    ['$']       = get_feeds,
+    ['missing$'] = get_missing_feeds,
+    ['(\\d+)$'] = get_feed,
+}
+-- Set the content type
+ngx.header.content_type = 'application/json';
+
+local BASE = '/crawl/'
+-- iterate route patterns and find view
+for pattern, view in pairs(routes) do
+    local uri = '^' .. BASE .. pattern
+    local match = ngx.re.match(ngx.var.uri, uri, "") -- regex mather in compile mode
+    if match then
+        exit = view(match) or ngx.HTTP_OK
+        -- finish up
+        ngx.exit( exit )
+    end
+end
+-- no match, return 404
+ngx.exit( ngx.HTTP_NOT_FOUND )

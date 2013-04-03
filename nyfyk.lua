@@ -112,6 +112,15 @@ local function item(match)
     end
 end
 
+local function deletefeed(match)
+    --[[
+            delete from rss_feed where id = 118 returning *;
+            delete from rss_item where rss_feed = 118;
+            delete from rss_log where rss_item in (select id from rss_item where rss_feed = 118)
+    --]]
+end
+
+
 --
 -- Spawn the refresh
 --

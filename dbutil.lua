@@ -47,8 +47,10 @@ end
 
 -- The function sending subreq to nginx postgresql location with rds_json on
 -- returns json body to the caller
-function dbreq(sql, donotdecode)
-    ngx.log(ngx.ERR, '-*- SQL -*-: ' .. sql)
+function dbreq(sql, donotdecode, log)
+    if log then 
+        ngx.log(ngx.ERR, '-*- SQL -*-: ' .. sql)
+    end
 
     local params = {
         method = ngx.HTTP_POST,

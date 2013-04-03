@@ -15,7 +15,7 @@ ngx.header.content_type = 'application/json';
 local function fetch(url, feed)
     --ngx.log(ngx.ERR, 'Fetching path:'..path..', from host:'..host)
     --ngx.var.fetcher_url = host
-    ngx.log(ngx.ERR, 'Fetching URL:'..url)
+    --ngx.log(ngx.ERR, 'Fetching URL:'..url)
     local res, err = ngx.location.capture('/fetcher/', { args = { url = url } })
     return res, err, feed
 end
@@ -39,15 +39,42 @@ local function save(feed, parsed)
     db.dbreq(sprintf('UPDATE rss_feed SET title=%s, author=%s, url=%s, lastmodified=CURRENT_TIMESTAMP WHERE id=%s', title, author, url, rss_feed))
 
 
-    --[[ insert entries
+    -- insert entries
     for i, e in ipairs(parsed.entries) do
         local guid = e.guid
         if not guid then guid = e.link end
         local content = e.content
         if not content then content = e.summary end
-        local sql = sprintf('INSERT INTO rss_item (rss_feed, guid, title, url, pubDate, content) VALUES (%s, %s, %s, %s, %s, E%s)', rss_feed, quote(guid), quote(e.title), quote(e.link), quote(e.updated), quote(content))
-        local res = db.dbreq(sql, true)
-    end]]
+        -- use postgresql "upsert" using writable CTE (psql 9.1 feature)
+        local sql = [[
+WITH new_values (rss_feed, guid, title, url, pubDate, content) AS (
+  VALUES 
+     ]]..sprintf('(%s, %s, %s, %s, %s::timestamp, %s)', rss_feed, quote(guid), quote(e.title), quote(e.link), quote(e.updated), quote(content))..[[
+),
+upsert as
+( 
+    UPDATE rss_item m 
+        SET rss_feed = nv.rss_feed,
+            guid = nv.guid,
+            title = nv.title,
+            url = nv.url,
+            pubDate = nv.pubDate,
+            content = nv.content
+    FROM new_values nv
+    WHERE m.rss_feed = nv.rss_feed
+    AND m.guid = nv.guid
+    RETURNING m.*
+)
+INSERT INTO rss_item (rss_feed, guid, title, url, pubDate, content)
+SELECT rss_feed, guid, title, url, pubDate, content
+FROM new_values
+WHERE NOT EXISTS (SELECT 1 
+                  FROM upsert up 
+                  WHERE up.rss_feed = new_values.rss_feed
+                  AND up.guid = new_values.guid)
+]]
+        local res = db.dbreq(sql)
+    end
     return
 end
 

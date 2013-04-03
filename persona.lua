@@ -49,7 +49,7 @@ local function end_redis()
     end
 end
 
-function login(assertion, audience)
+function verify(assertion, audience)
 
     local vars = {
         assertion=assertion,
@@ -108,7 +108,7 @@ function login()
     if body then 
         local args = cjson.decode(body)
         local audience = 'nyfyk.hveem.no'
-        local personadata = persona.login(args.assertion, audience)
+        local personadata = verify(args.assertion, audience)
         if personadata.status == 'okay' then
             setsess(personadata)
         end

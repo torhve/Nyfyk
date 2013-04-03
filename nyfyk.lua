@@ -1,94 +1,52 @@
-local dbi = require 'DBI'
 local cjson = require "cjson"
-local os = require 'os'
 local persona = require 'persona'
-local spawn = ngx.thread.spawn
-local wait = ngx.thread.wait
+local db = require 'dbutil'
+local sprintf = string.format
 local say = ngx.say
 
-local DBPATH = '/home/xt/src/nyfyk/db/newsbeuter.db'
--- sqlite
-local dbh  = nil
-
-
 --
--- Helper function to execute statements
+-- Get or modify all itens
 --
-local function dbexec(sql)
-    local sth, err = dbh:prepare(sql)
-    if err then 
-        ngx.print(err)
-        return false
-    end
-    local ok, err = sth:execute()
-    if err then 
-        ngx.print(err)
-        return false
-    end
-    return sth, ok, err
-end
-
---
--- Convenience SQL getter function that puts columns into each row, for easy JSON
---
-local function dbget(sql) 
-    local ret = {}
-    local sth, ok, err = dbexec(sql)
-    if ok then 
-        local columns = sth:columns()
-        for r in sth:rows() do
-            local row = {}
-            for i, c in ipairs(columns) do
-                row[c] = r[i]
-            end
-            table.insert(ret, row)
-        end
-    end
-    return ret
-end
-
-local function items(idx)
-    local sql = dbget('SELECT rssurl FROM rss_feed')
-    for i, k in ipairs(sql) do
-        if idx == i then
-            local feedurl = k.rssurl;
-            local feedurl = '%'
-            local feeds = dbget('SELECT guid,title,author,url,pubDate,content,unread,feedurl,enclosure_url,enclosure_type,enqueued,flags,base FROM rss_item WHERE feedurl = "'..feedurl..'" AND deleted = 0 ORDER BY pubDate DESC, id DESC limit 10;"')
-            ngx.print(cjson.encode(feeds))
-            return
-        end
-    end
-end
-
---
--- Get or modify all itmes
---
-local function allitems()
+local function items()
     local method = ngx.req.get_method()
     if method == 'PUT' then
-        local sth, ok, err = dbexec([[ UPDATE rss_item SET unread = 0 ]])
+        ngx.req.read_body()
+        -- app is sending application/json
+        local args = cjson.decode(ngx.req.get_body_data())
+        local email = persona.get_current_email()
+        if not email then say('{}') return end
+        --local res= db.dbreq([[ UPDATE rss_item SET unread = 0 ]])
+        local ok = true
+        for i, id in ipairs(args.items) do
+            ok = db.dbreq(sprintf('INSERT INTO rss_log (email, rss_item, read) VALUES (%s, %s, true)', db.quote(email, id)))
+        end
         if not ok then
-            ngx.print('{"success": false, "err": '..err..'}')
+            ngx.print('{"success": false}')
         else
             ngx.print('{"success": true}')
         end
     elseif method == 'GET' then
-        local feeds = dbget('SELECT id,guid,title,author,url,pubDate,content,unread,feedurl,enclosure_url,enclosure_type,enqueued,flags,base,(select title from rss_feed where rss_feed.rssurl = feedurl) as feedTitle FROM rss_item WHERE deleted = 0 ORDER BY pubDate DESC, id DESC ;"')
-        ngx.print(cjson.encode(feeds))
+        if persona.get_current_email() == 'tor@hveem.no' then
+            local feeds = db.dbreq([[SELECT 
+            rss_item.id,
+            rss_item.title,
+            extract(EPOCH FROM pubdate) as pubdate,
+            content,
+            rss_item.url,
+            rss_feed.title AS feedTitle, 
+            rss_feed.id AS feedId,
+            COALESCE(rss_log.read::boolean, false) as read,
+            COALESCE(rss_log.starred::boolean, false) as starred
+            FROM rss_item
+            INNER JOIN rss_feed ON (rss_item.rss_feed=rss_feed.id)
+            LEFT OUTER JOIN rss_log ON ( rss_item.id = rss_log.rss_item)
+            ORDER BY feedTitle
+            ]])
+            ngx.print(cjson.encode(feeds))
+        end
     end
 end
 
-local function feeds()
-    --local sql = dbget('SELECT * FROM rss_feed')
-    --local sql = dbget([[
-    --    select rss_feed.title,rssurl, count(unread) as unread from rss_feed inner join rss_item where rss_item.feedurl = rss_feed.rssurl and unread = 1 group by rssurl order by rss_feed.title;
-    --]])
-    local sql = dbget([[
-    select *, (select count(unread) from rss_item where rss_item.feedurl = rssurl and unread = 1) as unread  from rss_feed;
-    ]])
-
-    ngx.print(cjson.encode(sql))
-end
 
 --
 -- Add new feed
@@ -104,16 +62,8 @@ local function addfeed(match)
         -- make sure it's a number
         local url = args.url
         local cat = args.cat
-        if url and cat then
-            URLSPATH = '/home/xt/.newsbeuter/urls'
-            -- append mode
-            file = io.open(URLSPATH, 'a+')
-            if file then -- maybe no permission ?
-                file:write(url..' "'..cat..'"\n')
-                file:close()
-                ngx.print( cjson.encode({ success = true }) )
-            end
-        end
+        -- FIXME
+        ngx.print( cjson.encode({ success = true }) )
     end
     ngx.print( cjson.encode({ success = false }) )
 end
@@ -124,19 +74,34 @@ end
 local function item(match)
     local id = assert(tonumber(match[1]))
     local method = ngx.req.get_method()
-    -- TODO check for parameter (unread)
     if method == 'PUT' then
         ngx.req.read_body()
         -- app is sending application/json
         local args = cjson.decode(ngx.req.get_body_data())
-        -- make sure it's a number
-        local unread = assert(tonumber(args.unread))
-        local sth, ok, err = dbexec([[
-            UPDATE rss_item 
-            SET unread = ]]..unread..[[ 
-            WHERE id = ]]..id ..[[ 
-            LIMIT 1 ]]
-        )
+        local email = persona.get_current_email()
+        if not email then say('{}') return end
+        local res = db.dbreq(sprintf('INSERT INTO rss_log (email, rss_item) VALUES (%s, %s)', db.quote(email, id)))
+        local ok
+        -- check if read is set
+        local read = tonumber(args.read)
+        if read then 
+            ok = db.dbreq([[
+            UPDATE rss_log 
+            SET read = ']]..read..[[' 
+            WHERE rss_item = ]]..id ..[[ 
+            AND email = ']]..email..[['
+            ]])
+        end
+        -- check if starred is set
+        local starred = tonumber(args.starred)
+        if starred then 
+            ok = db.dbreq([[
+            UPDATE rss_log 
+            SET starred = ']]..starred..[[' 
+            WHERE rss_item = ]]..id ..[[ 
+            AND email = ']]..email..[['
+            ]])
+        end
         if not ok then
             ngx.print(ok)
         else
@@ -148,26 +113,19 @@ local function item(match)
 end
 
 --
--- Spawn the newsbeuter refresh
+-- Spawn the refresh
 --
 local function refresh()
-    -- for the demo copy a sample db back to newsbeuter.db
-    local cmd = 'cp '..DBPATH..'.demo '..DBPATH
-    
-    if persona.get_current_email() == 'tor@hveem.no' then
-        cmd = 'newsbeuter -u /home/xt/.newsbeuter/urls -c /home/xt/.newsbeuter/cache.db -x reload'
-    end
-    ngx.print(cmd)
-    local exec = os.execute(cmd)
-    ngx.print(exec)
+    -- TODO
 end
 
+-- TODO wrapper for login/status insert into  email (email) values ('tor@hveem.no')
 
 -- mapping patterns to views
 local routes = {
     ['feeds/$']     = feeds,
     ['addfeed/$']     = addfeed,
-    ['items/?$'] = allitems,
+    ['items/?$'] = items,
     ['items/(\\d+)/?$'] = item,
     ['refresh/$']     = refresh,
     ['persona/verify$']  = persona.login,
@@ -186,12 +144,8 @@ for pattern, view in pairs(routes) do
         if persona.get_current_email() == 'tor@hveem.no' then
             DBPATH = '/home/xt/.newsbeuter/cache.db'
         end
-        dbh = assert(DBI.Connect('SQLite3', DBPATH, nil, nil, nil, nil))
-        dbh:autocommit(true)
         exit = view(match) or ngx.HTTP_OK
         -- finish up
-        --local ok = dbh:commit()
-        local ok = dbh:close()
         ngx.exit( exit )
     end
 end

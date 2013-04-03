@@ -1,21 +1,22 @@
 var services = angular.module('Nyfyk.services', []);
 
-function Item(entry, feedTitle, feedUrl) {
+function Item(entry, feedTitle, feedId) {
   //this.read = false;
   this.starred = false;
   this.selected = false;
   this.feedTitle = feedTitle;
-  this.feedUrl = feedUrl;
-  this.date = new Date(entry.pubDate*1000);
-  this.read = entry.unread == false;
+  this.feedId = feedId;
+  this.date = new Date(entry.pubdate*1000);
+  //this.read = entry.unread == false;
 
   angular.extend(this, entry);
 }
 
-function Feed(title) {
+function Feed(title, id) {
     this.unreadCount = 0;
     this.readCount = 0;
     this.title = title;
+    this.feedid = id;
     this.selected = false;
 }
 
@@ -65,21 +66,21 @@ services.factory('items', ['$http', function($http) {
             i++;
             // maintain unique list of feed titles
             var feed;
-            if(items.feedhash[entry.feedTitle] == undefined) {
-                feed = new Feed(entry.feedTitle);
-                items.feedhash[entry.feedTitle] = feed;
+            if(items.feedhash[entry.feedid] == undefined) {
+                feed = new Feed(entry.feedtitle, entry.feedid);
+                items.feedhash[entry.feedid] = feed;
                 items.feeds.push(feed);
 
             }else {
-                feed = items.feedhash[entry.feedTitle];
+                feed = items.feedhash[entry.feedid];
             }
             if(item.read)   feed.readCount++;
-            if(item.unread) feed.unreadCount++;
+            else feed.unreadCount++;
         });
         console.log("Entries loaded from backend:", i);
 
         items.all.sort(function(entryA, entryB) {
-            return entryB.pubDate - entryA.pubDate;
+            return entryB.pubdate - entryA.pubdate;
         });
         // Sort feeds
         //items.feeds.sort();
@@ -151,39 +152,44 @@ services.factory('items', ['$http', function($http) {
 
     toggleRead: function() {
       var item = items.selected,
-          read = !item.read;
+          read = !item.read; // toggle status
+      console.log(item);
 
-      item.read = read;
-      //feedStore.updateEntryProp(item.feedUrl, item.id, 'read', read);
-      console.log('toggleRead id:', item.id);
-      $http.put('/nyfyk/api/items/'+item.id, {'unread': read ? 0 : 1}).success(function(data) {
+      item.read = read; // Update to new status
+      $http.put('/nyfyk/api/items/'+item.id, {'read': read ? 1 : 0}).success(function(data) {
           console.log('Toggleread backend said', data);
       });
       items.readCount += read ? 1 : -1;
 
-      items.feedhash[item.feedTitle].unreadCount += read ? -1 : 1;
-      items.feedhash[item.feedTitle].readCount += read ? -1 : 1;
+      items.feedhash[item.feedid].unreadCount += read ? -1 : 1;
+      items.feedhash[item.feedid].readCount += read ? 1 : -1;
     },
 
 
     toggleStarred: function() {
       var item = items.selected,
           starred = !item.starred;
+      $http.put('/nyfyk/api/items/'+item.id, {'starred': starred ? 1 : 0}).success(function(data) {
+          console.log('Togglestarred backend said', data);
+      });
 
       item.starred = starred;
-      console.log('Fixme', 'starred');
-      //feedStore.updateEntryProp(item.feedUrl, item.id, 'starred', starred);
       items.starredCount += starred ? 1 : -1;
     },
 
 
     markAllRead: function() {
+      var ids = [];
       items.filtered.forEach(function(item) {
+        ids.push(item.id);
         item.read = true;
-        //feedStore.updateEntryProp(item.feedUrl, item.id, 'read', true);
+        // FIXME check for current status and use ternary check
+        items.feedhash[item.feedid].unreadCount--;
+        items.feedhash[item.feedid].readCount++;
+        items.readCount++;
+        items.unreadCount--;
       });
-      items.readCount = items.filtered.length;
-      $http.put('/nyfyk/api/items/', {'unread': 0}).success(function(data) {
+      $http.put('/nyfyk/api/items/', {'items': ids}).success(function(data) {
           console.log('MarkAllRead backend said', data);
       });
     },
@@ -204,7 +210,7 @@ services.factory('items', ['$http', function($http) {
       feed.selected = true;
       
       items.filtered = items.all.filter(function(item) {
-        return item.feedTitle == feed.title;
+        return item.feedid == feed.feedid;
       });
       items.reindexSelectedItem();
     },

@@ -2,6 +2,10 @@
 local setmetatable = setmetatable
 local ngx = ngx
 local cjson = require "cjson"
+local select = select
+local table = table
+local pairs = pairs
+local unpack = unpack
 
 module(...)
 
@@ -18,7 +22,13 @@ function escapePostgresParam(...)
   local requests = {}
   
   for i = 1, select('#', ...) do
-    local param = ngx.escape_uri((select(i, ...)))
+    local input = select(i, ...)
+    local param
+    if not input or input == ngx.null then
+        param = ''
+    else
+        param = ngx.escape_uri(input)
+    end
     
     table.insert(requests, {url .. param})
   end
@@ -29,6 +39,10 @@ function escapePostgresParam(...)
   end
   
   return unpack(results)
+end
+
+function quote(...)
+    return escapePostgresParam(...)
 end
 
 -- The function sending subreq to nginx postgresql location with rds_json on

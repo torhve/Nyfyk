@@ -18,3 +18,72 @@ Chrome Platform port by [Igor Minar](http://igorminar.com)
 Newsbeuter backend switch, flex update and UI changes by [Tor Hveem](http://hveem.no/)
 
 
+# Install
+    create user nyfyk with password 'sasdf';
+    create database nyfyk;
+    grant all privileges on database nyfyk to nyfyk;
+
+CREATE TABLE rss_feed (
+        id SERIAL PRIMARY KEY NOT NULL,
+        rssurl VARCHAR(1024),
+        url VARCHAR(1024) NOT NULL,
+        title VARCHAR(1024) NOT NULL ,
+        author VARCHAR(1024) NOT NULL ,
+        lastmodified timestamp,
+        is_rtl BOOLEAN NOT NULL DEFAULT '0',
+        etag VARCHAR(128));
+
+    CREATE TABLE rss_item (  
+            id SERIAL PRIMARY KEY NOT NULL, 
+            rss_feed INTEGER references rss_feed(id), 
+            guid VARCHAR(64) NOT NULL,  
+            title VARCHAR(1024) NOT NULL,  
+            author VARCHAR(1024) NOT NULL,  
+            url VARCHAR(1024) NOT NULL,  
+            feedurl VARCHAR(1024) NOT NULL,  
+            pubDate timestamp NOT NULL,  
+            content VARCHAR(65535) NOT NULL, 
+            enclosure_url VARCHAR(1024), 
+            enclosure_type VARCHAR(1024), 
+            enqueued BOOLEAN NOT NULL DEFAULT '0', 
+            flags VARCHAR(52), 
+            base VARCHAR(128));
+
+    CREATE INDEX idx_rssurl ON rss_feed(rssurl);
+
+    CREATE TABLE email (
+            email varchar(100) UNIQUE PRIMARY KEY NOT NULL,
+            created_at timestamp DEFAULT current_timestamp NOT NULL
+            );
+
+    CREATE TABLE subscription (
+        id SERIAL PRIMARY KEY NOT NULL,
+        email varchar(100) references email(email),
+        rss_feed INTEGER references rss_feed(id),
+        created_at timestamp DEFAULT current_timestamp NOT NULL
+    );
+
+    CREATE INDEX idx_email ON subscription(email);
+
+    create table rss_log (
+        id SERIAL PRIMARY KEY NOT NULL,
+        email varchar(100) references email(email),
+        rss_item INTEGER references rss_item(id),
+        read BOOLEAN NOT NULL DEFAULT '0', 
+        deleted BOOLEAN NOT NULL DEFAULT '0', 
+        starred BOOLEAN NOT NULL DEFAULT '0', 
+        created_at timestamp DEFAULT current_timestamp NOT NULL,
+        CONSTRAINT uq_log UNIQUE (email, rss_item)
+    );
+
+    CREATE INDEX idx_starred ON rss_log(starred);
+    CREATE INDEX idx_read ON rss_log(read);
+
+
+    CREATE TABLE session (
+        sessionid varchar(32) PRIMARY KEY NOT NULL,
+        email varchar(100) references email(email),
+        created_at timestamp,
+        expires_at timestamp
+    );
+

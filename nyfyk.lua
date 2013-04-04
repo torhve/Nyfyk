@@ -26,24 +26,30 @@ local function items()
             ngx.print('{"success": true}')
         end
     elseif method == 'GET' then
-        if persona.get_current_email() == 'tor@hveem.no' then
-            local feeds = db.dbreq([[SELECT 
-            rss_item.id,
-            rss_item.title,
-            extract(EPOCH FROM pubdate) as pubdate,
-            content,
-            rss_item.url,
-            rss_feed.title AS feedTitle, 
-            rss_feed.id AS feedId,
-            COALESCE(rss_log.read::boolean, false) as read,
-            COALESCE(rss_log.starred::boolean, false) as starred
-            FROM rss_item
-            INNER JOIN rss_feed ON (rss_item.rss_feed=rss_feed.id)
-            LEFT OUTER JOIN rss_log ON ( rss_item.id = rss_log.rss_item)
-            ORDER BY feedTitle
-            ]])
-            ngx.print(cjson.encode(feeds))
-        end
+        -- FIXME demo/multiuser
+        local email = persona.get_current_email()
+        if not email then say('{}') return end
+
+        local feeds = db.dbreq([[
+        SELECT 
+        rss_item.id,
+        rss_item.title,
+        extract(EPOCH FROM pubdate) as pubdate,
+        content,
+        rss_item.url,
+        rss_feed.title AS feedTitle, 
+        rss_feed.id AS feedId,
+        COALESCE(rss_log.read::boolean, false) as read,
+        COALESCE(rss_log.starred::boolean, false) as starred
+        FROM rss_item
+        INNER JOIN rss_feed ON (rss_item.rss_feed=rss_feed.id)
+        INNER JOIN subscription ON (rss_item.rss_feed=subscription.rss_feed)
+        LEFT OUTER JOIN rss_log ON ( rss_item.id = rss_log.rss_item AND rss_log.email = ]]..db.quote(email)..[[)
+        WHERE 
+            subscription.email = ]]..db.quote(email)..[[
+        ORDER BY feedTitle
+        ]])
+        ngx.print(cjson.encode(feeds))
     end
 end
 
@@ -55,17 +61,26 @@ end
 --
 local function addfeed(match)
     -- FIXME demo/multiuser
-    if persona.get_current_email() == 'tor@hveem.no' then
-        ngx.req.read_body()
-        -- app is sending application/json
-        local args = cjson.decode(ngx.req.get_body_data())
-        -- make sure it's a number
-        local url = args.url
-        local cat = args.cat
-        -- FIXME
-        ngx.print( cjson.encode({ success = true }) )
+    local email = persona.get_current_email()
+    if not email then say('{}') return end
+
+    ngx.req.read_body()
+    -- app is sending application/json
+    local args = cjson.decode(ngx.req.get_body_data())
+    -- make sure it's a number
+    local url = args.url
+    local cat = args.cat
+    local sql = db.dbreq(sprintf("INSERT INTO rss_feed (rssurl) VALUES (%s) RETURNING id", db.quote(url)))
+    local id
+    if sql then -- existing FEED
+        id = sql[1].id;
+    else
+        id = db.dbreq(sprintf("SELECT id FROM rss_feed WHERE rssurl = %s", db.quote(url)))[1].id
     end
-    ngx.print( cjson.encode({ success = false }) )
+    local sql = db.dbreq(sprintf("INSERT INTO subscription (email, rss_feed, tag) VALUES (%s, %s, %s)", db.quote(email), id, db.quote(cat)))
+    -- refresh feed
+    local cap = ngx.location.capture('/crawl/'..id)
+    ngx.print( cjson.encode({ success = true }) )
 end
 
 --

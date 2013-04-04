@@ -83,7 +83,7 @@ CREATE TABLE rss_feed (
     CREATE TABLE session (
         sessionid varchar(32) PRIMARY KEY NOT NULL,
         email varchar(100) references email(email),
-        created_at timestamp,
-        expires_at timestamp
+        created timestamp,
+        expires timestamp
     );
 

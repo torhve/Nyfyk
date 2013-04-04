@@ -203,6 +203,7 @@ services.factory('items', ['$http', function($http) {
     },
 
     selectFeed: function(idx) {
+        console.log('selected feed with id', idx);
       var feed = items.feedhash[idx];
       items.feeds.forEach(function(feed) {
           feed.selected = false;

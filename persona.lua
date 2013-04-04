@@ -1,5 +1,6 @@
 ---
 -- Persona Lua auth backend using ngx location capture
+-- also using postgresql capture for storing sessions to db
 -- 
 -- Copyright Tor Hveem <thveem> 2013
 -- 
@@ -13,41 +14,12 @@
 local setmetatable = setmetatable
 local ngx = ngx
 local cjson = require "cjson"
-local redis = require "resty.redis"
--- redis
-local red  = nil
-
+local db = require 'dbutil'
+local sprintf = string.format
 
 module(...)
 
 local mt = { __index = _M }
-
--- 
--- Initialise db
---
-local function init_redis()
-    -- Start redis connection
-    red = redis:new()
-    local ok, err = red:connect("unix:/var/run/redis/redis.sock")
-    if not ok then
-        ngx.say("failed to connect: ", err)
-        return
-    end
-end
-init_redis()
-
---
--- End db, we could close here, but park it in the pool instead
---
-local function end_redis()
-    -- put it into the connection pool of size 100,
-    -- with 0 idle timeout
-    local ok, err = red:set_keepalive(0, 100)
-    if not ok then
-        ngx.say("failed to set keepalive: ", err)
-        return
-    end
-end
 
 function verify(assertion, audience)
 
@@ -77,24 +49,28 @@ function verify(assertion, audience)
 end
 
 function getsess(sessionid)
-    return red:get('nyfyk:session:'..sessionid)
+    local res = db.dbreq("SELECT * FROM session WHERE sessionid = '"..sessionid.."'")
+    if res then 
+        return res[1]
+    end
+    return nil
 end
 
 local function setsess(personadata)
     -- Set cookie for session
     local sessionid = ngx.md5(personadata.email .. ngx.md5(personadata.expires))
     ngx.header['Set-Cookie'] = 'session='..sessionid..'; path=/; HttpOnly'
-    red:set('nyfyk:session:'..sessionid, cjson.encode(personadata))
-    -- Expire the key when the session expires, so if key exists login is valid
-    red:expire('nyfyk:session:'..sessionid, personadata.expires)
+    -- TODO Expire the key when the session expires, so if key exists login is valid
+    -- FIXME login counter ? with CTE upsert?
+    local sql = db.dbreq('INSERT INTO email (email) VALUES ('..db.quote(personadata.email)..')')
+    local sql = db.dbreq(sprintf('INSERT INTO session (sessionid, email, created, expires) VALUES (%s, %s, CURRENT_TIMESTAMP, to_timestamp(%s))', db.quote(sessionid), db.quote(personadata.email), b.quote(personadata.expires)))
 end
 
 function get_current_email()
     local cookie = ngx.var['cookie_session']
     if cookie then
         local sess = getsess(cookie)
-        if sess ~= ngx.null then
-            sess = cjson.decode(sess)
+        if sess then
             return sess.email
         end
     end
@@ -122,7 +98,7 @@ end
 function status()
     local cookie = ngx.var['cookie_session']
     if cookie then
-        ngx.print (getsess(cookie))
+        ngx.print ( cjson.encode(getsess(cookie)) )
     else
         ngx.print ( '{"email":false}' )
     end
@@ -131,7 +107,7 @@ end
 function logout()
     local cookie = ngx.var['cookie_session']
     if cookie then
-        ngx.print(red:del('nyfyk:session:'..cookie))
+        local sql = db.dbreq("DELETE FROM session WHERE sessionid = '"..cookie.."'")
         ngx.print( 'true' )
     else
         ngx.print( 'false' )

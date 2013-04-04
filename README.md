@@ -1,6 +1,6 @@
 # Nyfyk
 
-Nyfyk is a RSS Reader HTML5 app that will only work with very modern browsers, see <http://caniuse.com/#search=flex> for my definiton of modern. It's code is an adaptation of the wReader chrome app linked below. It uses [Newsbeuter](http://newsbeuter.org), a RSS CLI program with SQLite3 as backend. [Openresty](http://openresty.org) serves as the middleware between SQLite3 and the front end app, just because I love me some openresty. 
+Nyfyk is a RSS Reader HTML5 app that will only work with very modern browsers, see <http://caniuse.com/#search=flex> for my definiton of modern. It's code is an adaptation of the wReader chrome app linked below. It uses postgresql as a backend. [Openresty](http://openresty.org) serves as the middleware between the database and the front end app, just because I love me some openresty. 
 
 ### Why ?
 

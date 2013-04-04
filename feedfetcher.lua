@@ -11,12 +11,13 @@ local db = require 'dbutil'
 -- Set the content type
 ngx.header.content_type = 'application/json';
 
-
+--
+-- The function tha runs the subrequest to nginx and fetches the content
+--
 local function fetch(url, feed)
-    --ngx.log(ngx.ERR, 'Fetching path:'..path..', from host:'..host)
-    --ngx.var.fetcher_url = host
     --ngx.log(ngx.ERR, 'Fetching URL:'..url)
-    local res, err = ngx.location.capture('/fetcher/', { args = { url = url } })
+    local lastmodified = ngx.http_time(tonumber(feed.lastmodified))
+    local res, err = ngx.location.capture('/fetcher/', { args = { url = url, lastmodified = lastmodified } })
     return res, err, feed
 end
 
@@ -24,13 +25,7 @@ local function save(feed, parsed)
     if not feed then return end
     if not parsed then say('FUCKUP WITH PARSING') return  end
     local quote = dbutil.escapePostgresParam
-    -- check that rss_feed exists
-    local feedres = db.dbreq(sprintf('SELECT * from rss_feed where rssurl = E%s', quote(feed.rssurl)))[1]
-    if not feedres.id then
-        say('Could not find feed with URL:'..feed.rssurl)
-        return
-    end
-    local rss_feed = feedres.id
+    local rss_feed = feed.id
     -- save parsed values to rss_feed
     local title = quote(parsed.feed.title)
     local author = quote(parsed.feed.author)
@@ -75,37 +70,38 @@ WHERE NOT EXISTS (SELECT 1
 ]]
         local res = db.dbreq(sql)
     end
-    return
+    return true
 end
 
 local function parse(feed, body)
     local parsed = feedparser.parse(body)
-    say(cjson.encode(parsed))
+    say(feed.id..':: '..#parsed.entries..' entries parsed.')
     if save(feed, parsed) then
         return 'Parse successful'
     else 
         return 'FUCKUP WITH SAVING'
     end
-
 end
 
 local function wait_and_parse(threads)
     local newthreads = {}
     for i = 1, #threads do
         local ok, res, err, feed = wait(threads[i])
-        say("RES:"..cjson.encode(feed))
         if not ok then
-            say(i, ":failed to run: ", res)
+            say(feed.id, ":failed to run: ", res)
         else
-            say(i, ":"..": status: ", res.status)
+            say(feed.id, ":"..": status: ", res.status..', URL::'..feed.rssurl)
             if res.status >= 200 and res.status < 300 then
-                say(i, ":"..": parsed: ", parse(feed, res.body))
-            elseif res.status >= 300 and res.status < 400 then
+                say(feed.id, ":"..": parsed: ", parse(feed, res.body))
+            elseif res.status == 304 then
+                -- TODO handle if modified since
+                say(feed.id, ':: Not modified since! Keep on truckin!')
+            elseif res.status >= 300 and res.status < 304 then
                 -- Got a redirect, spawn a new thread to fetch it
                 table.insert(newthreads, spawn(fetch, res.header['Location'], feed))
-                say(i, ":"..feed.rssurl..": header: ", cjson.encode(res.header))
+                say(feed.id, ":"..feed.rssurl..": header: ", cjson.encode(res.header))
             else 
-                say(i, ":"..feed.rssurl..": header: ", cjson.encode(res.header))
+                say(feed.id, ":"..feed.rssurl..": header: ", cjson.encode(res.header))
             end
         end
     end
@@ -135,40 +131,20 @@ local function refresh_feeds(feeds)
 end
 
 local function get_feeds()
-    local res = db.dbreq('SELECT * FROM rss_feed');
+    local res = db.dbreq("select id, rssurl, COALESCE(extract(epoch from lastmodified),0) as lastmodified from rss_feed");
     refresh_feeds(res)
 end
 
 local function get_missing_feeds()
-    local res = db.dbreq("SELECT * FROM rss_feed where title IS NULL");
+    local res = db.dbreq("select id, rssurl, COALESCE(extract(epoch from lastmodified),0) as lastmodified from rss_feed where title IS NULL");
     refresh_feeds(res)
 end
 
 local function get_feed(match)
     local id = assert(tonumber(match[1]))
-    local res = db.dbreq(sprintf('SELECT * FROM rss_feed WHERE id = %s', id))
+    local res = db.dbreq(sprintf('SELECT id, rssurl, COALESCE(extract(epoch from lastmodified),0) as lastmodified FROM rss_feed WHERE id = %s', id))
     refresh_feeds(res)
 end
-
-local function addalotofurls()
-    local io = require 'io'
-    local file = io.open('/home/xt/.newsbeuter/urls', 'r') 
-    local lines = file:lines()
-    for line in lines do
-        local spacespos = string.find(line, ' ')
-        local spacepos = strfind(line,' ')
-        local url = nil
-        if not spacepos then 
-            url = line 
-        else 
-            url = string.sub(line, 1, spacepos)
-        end
-        say(url)
-        db.dbreq('INSERT INTO rss_feed (rssurl) VALUES ('..dbutil.escapePostgresParam(url)..')')
-    end
-    file:close()
-end
---addalotofurls()
 
 -- mapping patterns to views
 local routes = {

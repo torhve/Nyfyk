@@ -57,7 +57,6 @@ services.factory('items', ['$http', function($http) {
         items.all = [];
         items.feeds = [];
         items.feedhash = {};
-        console.log('data', data);
         feed = data.data;
 
         angular.forEach(feed, function(entry) {
@@ -153,7 +152,6 @@ services.factory('items', ['$http', function($http) {
     toggleRead: function() {
       var item = items.selected,
           read = !item.read; // toggle status
-      console.log(item);
 
       item.read = read; // Update to new status
       $http.put('/nyfyk/api/items/'+item.id, {'read': read ? 1 : 0}).success(function(data) {
@@ -203,7 +201,6 @@ services.factory('items', ['$http', function($http) {
     },
 
     selectFeed: function(idx) {
-        console.log('selected feed with id', idx);
       var feed = items.feedhash[idx];
       items.feeds.forEach(function(feed) {
           feed.selected = false;
@@ -241,7 +238,6 @@ services.factory('items', ['$http', function($http) {
 
     refreshFeeds: function() {
         $http.get('/nyfyk/api/refresh/').then(function(data) {
-            console.log(data);
             items.getItemsFromBackend();
         });
     }

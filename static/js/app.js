@@ -30,6 +30,13 @@ function AppController($scope, items, scroll, bgPage) {
     if (newVal !== null) scroll.toCurrent();
   });
 
+  // Put the unread count in the document tite
+  $scope.$watch('items.readCount', function(newVal) {
+      var unreadCount = items.all.length - newVal;
+      if (unreadCount != 0) document.title = 'Nyfyk (' + unreadCount + ')';
+      if (unreadCount == 0) document.title = 'Nyfyk';
+  });
+
   $scope.addFeed = function() {
 
       var url = $scope.newfeedurl;

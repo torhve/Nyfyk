@@ -187,7 +187,6 @@ services.factory('items', ['$http', function($http) {
         items.feedhash[item.feedid].unreadCount--;
         items.feedhash[item.feedid].readCount++;
         items.readCount++;
-        items.unreadCount--;
       });
       $http.put('/nyfyk/api/items/', {'items': ids}).success(function(data) {
           console.log('MarkAllRead backend said', data);

@@ -75,11 +75,15 @@ end
 
 local function parse(feed, body)
     local parsed = feedparser.parse(body)
-    say(feed.id..':: '..#parsed.entries..' entries parsed.')
-    if save(feed, parsed) then
-        return 'Parse successful'
-    else 
-        return 'FUCKUP WITH SAVING'
+    if not parsed then
+        say(feed.id..':: nil from feedparser!')
+    else
+        say(feed.id..':: '..#parsed.entries..' entries parsed.')
+        if save(feed, parsed) then
+            return 'Parse successful'
+        else 
+            return 'FUCKUP WITH SAVING'
+        end
     end
 end
 

@@ -63,7 +63,7 @@ local function setsess(personadata)
     -- TODO Expire the key when the session expires, so if key exists login is valid
     -- FIXME login counter ? with CTE upsert?
     local sql = db.dbreq('INSERT INTO email (email) VALUES ('..db.quote(personadata.email)..')')
-    local sql = db.dbreq(sprintf('INSERT INTO session (sessionid, email, created, expires) VALUES (%s, %s, CURRENT_TIMESTAMP, to_timestamp(%s))', db.quote(sessionid), db.quote(personadata.email), b.quote(personadata.expires)))
+    local sql = db.dbreq(sprintf('INSERT INTO session (sessionid, email, created, expires) VALUES (%s, %s, CURRENT_TIMESTAMP, to_timestamp(%s))', db.quote(sessionid), db.quote(personadata.email), db.quote(personadata.expires)))
 end
 
 function get_current_email()

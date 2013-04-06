@@ -101,6 +101,8 @@ services.factory('items', ['$http', function($http) {
     addFeed: function(url, cat) {
       $http.put('/nyfyk/api/addfeed/', {url:url, cat:cat}).then(function(data) {
           console.log('addFeed backend said:', data);
+          // Add feeds after succesfull parse. FIXME: error handling
+          items.refreshFeeds()
        });
     },
 

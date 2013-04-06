@@ -244,7 +244,7 @@ services.factory('items', ['$http', function($http) {
     }
   };
 
-  items.getItemsFromBackend();
+  //items.getItemsFromBackend();
 
   return items;
 }]);

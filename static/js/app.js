@@ -46,6 +46,13 @@ function AppController($scope, items, scroll, bgPage) {
       url = '';
       cat = '';
   }
+
+  // automatic refresh of backend every 5 minutes
+  setInterval(function() { 
+      $scope.$apply(function() {
+          $scope.refresh()
+      });
+  }, 5*60*1000);
 }
 
 
